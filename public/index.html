@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0b0d12" />
+  <title>Deepscord · 语音频道</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='7' fill='%237c6cf5'/%3E%3Cg fill='none' stroke='%23fff' stroke-width='1.7' stroke-linecap='round'%3E%3Cpath d='M12 8v8M8.5 9.5v5M15.5 9.5v5M5.5 11v2M18.5 11v2'/%3E%3C/g%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="app.css" />
+  <link rel="stylesheet" href="interaction.css" />
+  <link rel="stylesheet" href="theme.css" />
+  <link rel="stylesheet" href="customization.css" />
+  <link rel="stylesheet" href="radio.css" />
+  <link rel="stylesheet" href="interface.css" />
+</head>
+<body>
+  <div class="app" id="app">
+    <!-- 服务器栏 -->
+    <nav class="rail" id="serverRail" aria-label="当前服务器的域">
+      <div class="rail-brand" title="Deepscord">
+        <span class="rail-brand-mark">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+            <path d="M12 7v10M8.6 9.2v5.6M15.4 9.2v5.6M5.4 10.6v2.8M18.6 10.6v2.8" />
+          </svg>
+        </span>
+      </div>
+      <div class="rail-divider"></div>
+      <div class="rail-list" id="serverList"></div>
+      <button class="rail-add" id="addServerBtn" title="添加域" aria-label="添加域">+</button>
+      <div class="rail-spacer"></div>
+      <button class="rail-settings" id="railSettingsBtn" title="设置">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" />
+        </svg>
+      </button>
+    </nav>
+
+    <!-- 频道栏 -->
+    <aside class="sidebar">
+      <header class="sidebar-head">
+        <div class="server-hierarchy"><span id="connectionServerName">服务器</span><h1 id="serverName">域</h1></div>
+        <button id="serverMenuBtn" class="ghost-icon" title="服务器与域管理" aria-label="服务器与域管理">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></svg>
+        </button>
+      </header>
+      <div class="channel-scroll" id="channelScroll"></div>
+      <div class="self-panel" id="selfPanel"></div>
+    </aside>
+
+    <!-- 主区域 -->
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <span class="topbar-icon" id="topbarIcon"></span>
+          <span class="topbar-name" id="topbarName">Deepscord</span>
+          <span class="topbar-desc" id="topbarDesc"></span>
+        </div>
+        <div class="topbar-right">
+          <span class="conn-pill" id="networkStatus"></span>
+          <button class="btn" id="copyDirectInvite" type="button" hidden>复制邀请</button>
+          <span class="conn-pill ok" id="connPill"><span class="conn-dot"></span>连接中…</span>
+          <button class="icon-btn" id="toggleMembers" title="显示/隐藏成员列表">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9.5" cy="7" r="4" />
+              <path d="M22 21v-2a4 4 0 0 0-3-3.9M16.5 3.1a4 4 0 0 1 0 7.8" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <section class="radio-strip" id="radioStrip" aria-label="当前电台" hidden><span class="radio-live" aria-hidden="true">♫</span><div class="radio-track-viewport" id="radioTrackViewport"><span id="radioTrack"></span></div><label class="radio-volume" for="radioVolume"><span>电台音量</span><input id="radioVolume" type="range" min="0" max="100" step="1" value="30" aria-label="本机电台音量" /><output id="radioVolumeValue" for="radioVolume">30%</output></label><button class="btn small ghost" id="radioRetryBtn" type="button" hidden>重试</button><button class="btn small ghost" id="radioManageBtn" type="button">电台列表</button></section>
+      <div class="content">
+        <section class="voice-stage" id="voiceStage" hidden>
+          <div class="stage-head">
+            <div class="stage-title"><span class="live-dot"></span><span id="stageTitle">语音频道</span></div>
+            <div class="stage-sub" id="stageSub">0 人在语音</div>
+          </div>
+          <div class="stage-grid" id="stageGrid"></div>
+          <div class="stage-actions" id="stageActions"></div>
+        </section>
+
+        <section class="chat" id="chat">
+          <div class="messages" id="messages"></div>
+          <div class="composer-wrap" id="composerWrap">
+            <div class="composer-toolbar" role="toolbar" aria-label="消息工具">
+              <button type="button" class="composer-tool" id="emojiPanelBtn" data-testid="composer-emoji-btn" aria-label="表情与收藏" aria-expanded="false"><span aria-hidden="true">☺</span> 表情</button>
+              <button type="button" class="composer-tool" id="imageUploadBtn" data-testid="composer-image-btn" aria-label="选择图片"><svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 5-5 4 4 4-6 5 7"/></svg> 图片</button>
+            </div>
+            <form class="composer" id="composer">
+              <textarea id="msgInput" rows="1" placeholder="发消息…" maxlength="2000" autocomplete="off"></textarea>
+              <button type="submit" class="send-btn" id="sendBtn" title="发送（Enter）">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg>
+              </button>
+            </form>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- 成员栏 -->
+    <aside class="members" id="members">
+      <div class="members-scroll" id="membersScroll"></div>
+    </aside>
+  </div>
+
+  <div class="modal-root" id="modalRoot"></div>
+  <div class="toast-root" id="toastRoot"></div>
+  <div class="audio-sinks" id="audioSinks" aria-hidden="true"></div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

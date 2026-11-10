@@ -1,0 +1,13 @@
+{
+  "format": 1,
+  "id": "industrial-open",
+  "name": "工程站·开放主题",
+  "version": "1.0.0",
+  "kind": "interfaces",
+  "entries": [
+    {
+      "file": "industrial-open.json",
+      "name": "工程站·开放主题"
+    }
+  ]
+}

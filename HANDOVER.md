@@ -1,0 +1,519 @@
+# Deepscord 项目交接文档
+
+> 交接对象：接收方（运维 / 开发 / 两者皆可）
+> 编写日期：2026-11-04
+> 项目版本：1.0.0（网页端 + Windows 桌面端）
+> 代码位置：`G:\111deepseek\deepscord`（本机） / 服务器部署目录 `C:\Deepscord`
+> 配套源码包：`handover\Deepscord-源码-v1.0.0-20261104.zip`
+> 运行版：`handover\Deepscord-运行版-v1.0.0-win64.zip`（对应 `dist\Deepscord-win32-x64\`）
+
+---
+
+## 0. 一分钟了解
+
+Deepscord 是一个 **Discord 风格的语音频道软件**：网页 + Windows 桌面客户端。用户登录后可以进语音频道开麦聊天、文字聊天、建频道/服务器。语音走 WebRTC P2P（mesh），服务器只负责页面、信令和聊天记录，所以一台 1 核小机器就能跑。
+
+部署信息由维护者单独保管。下表及后文 `server.example.invalid` 仅为示例，不是可连接的预置服务器：
+
+| 项 | 值 |
+| --- | --- |
+| 公网地址 | 由部署管理员提供，客户端无默认公共地址 |
+| 访问口令 | 部署端自行设置，通过独立渠道交付；不存入源码 |
+| 服务器 | 使用自己管理的服务器及网络配置 |
+| 服务器管理员 | 管理账户及凭据单独保管；不随源码或安装包分发 |
+| 桌面客户端 | `dist\Deepscord-win32-x64\Deepscord.exe`（v1.0.0，绿色免安装，237.9 MB） |
+
+---
+
+## 1. 交接物清单
+
+| 交付物 | 位置 | 说明 |
+| --- | --- | --- |
+| 源码包 | `handover\Deepscord-源码-v1.0.0-20261104.zip` | 全部源码、测试、部署模板、文档，约 3 MB（不含 `node_modules`/`dist`/`data`/`certs`） |
+| 运行版 | `handover\Deepscord-运行版-v1.0.0-win64.zip` | 打包好的 Windows 客户端目录，解压双击 `Deepscord.exe` 即用 |
+| 交接文档 | `handover\HANDOVER.md`（本文件） | 架构、运维、故障排查、安全事项 |
+| 项目 README | 源码包根目录 `README.md` | 面向使用者的功能说明与部署教程 |
+| 桌面端 QA 报告 | 源码包 `docs/qa-desktop.md` | 独立 QA 24 项通过记录（历史版本，最终版本已再回归 14 项） |
+| 截图 | 源码包 `docs/screenshots/01~14.png` | 网页/桌面/部署各场景截图 |
+| 服务器配置 | 服务器 `C:\Deepscord\run-deepscord.bat` | 端口、口令、STUN、数据目录都在这里 |
+
+> 源码包里**不包含**：`node_modules`（npm install 可重建）、`dist`（打包产物）、`data/store.json`（聊天数据，含用户内容）、`certs`（证书私钥）、`desktop/app-server`（构建时生成）、`tools/cache`。
+
+---
+
+## 2. 功能清单（当前版本）
+
+- **语音**：双击语音频道进入；频道栏成员列表（头像/静音/闭音/说话绿环）；人数上限（右键编辑 0–100，`04/50` 样式，满员拒绝）；说话高亮；静音/闭音；语音感应（灵敏度可调）与按键说话（键盘任意键/鼠标侧键）。
+- **音频处理**：高通 85Hz → 压缩器 → 增益 → 噪声门 → 发送；回声消除/降噪/自动增益可选；**麦克风监听（自听）**。
+- **文字**：频道实时聊天、历史持久化、语音频道也能聊天、系统消息、轻量 Markdown。
+- **频道/服务器**：多服务器；创建/编辑（名称+人数上限）/删除频道；创建/删除服务器；成员面板。
+- **桌面客户端**：首次启动进入工作区，手动创建或加入；保存已使用的服务器；托盘常驻；单实例；自签证书经指纹确认后固定信任；系统菜单（切换服务器、重载、退出）。
+- **安全**：访问口令 + 同 IP 5 次失败限流 60 秒。
+- **多端**：同一服务器网页/桌面可混合在线。
+
+---
+
+## 3. 技术栈与架构
+
+- **后端**：Node.js ≥ 18（线上用 v22.12.0），**零 npm 运行时依赖**。原生 `http`/`https` 静态服务 + 手写 RFC6455 WebSocket（`lib/ws.js`）。
+- **前端**：原生 ES Modules（无框架、无构建步骤），Web Audio 麦克风处理链，WebRTC mesh（新加入者发 offer，服务器转发 SDP/ICE）。
+- **桌面端**：Electron 45（内置 Chromium + Node）；`desktop/main.js` 用 `ELECTRON_RUN_AS_NODE=1` 拉起内置服务器副本。
+- **数据**：单个 JSON 文件 `data/store.json`（服务器/频道/消息），定期原子写盘。
+
+```
+浏览器 / Electron 窗口
+  ├─ UI（public/js/app.js）
+  ├─ WebSocket JSON（hello/auth/频道/聊天/语音状态/信令）
+  └─ RTCPeerConnection × N（mesh，音频 P2P）
+          │
+     Node 服务端（server.js + lib/ws.js）
+        ├─ 静态文件 /api/health /api/config
+        ├─ 用户/频道/语音房间/信令转发
+        └─ data/store.json（消息持久化）
+```
+
+**语音链路**：`getUserMedia → highpass(85Hz) → compressor → gain(micVolume) → gate(VAD/PTT) → MediaStreamDestination → RTCPeerConnection → 对方 <audio>`；同时 `gain → analyser` 做电平表/说话检测，`gain → monitor → destination` 做自听。
+
+---
+
+## 4. 代码地图
+
+```
+deepscord/
+├─ server.js                  # 入口：HTTP/HTTPS 服务 + WS 业务（~900 行）
+│                             #   握手/口令/频道/语音/信令/聊天/持久化/健康检查
+├─ lib/ws.js                  # 零依赖 RFC6455 WebSocket（帧/分片/ping-pong/close）
+├─ public/
+│  ├─ index.html              # 单页骨架（欢迎弹窗 / 侧栏 / 舞台 / 聊天 / 设置）
+│  ├─ app.css                 # 全套深色主题（无框架）
+│  └─ js/
+│     ├─ app.js               # 状态、渲染、频道/服务器/聊天/成员交互、快捷键
+│     ├─ voice.js             # 语音引擎：麦克风链、mesh、信令、VAD/PTT、监听
+│     ├─ settings.js          # 设置面板（设备/音量/输入模式/按键/监听）
+│     ├─ ws.js                # WS 客户端：重连（指数退避 400ms~8s）、ping/延迟
+│     ├─ ui.js                # 模态框、Toast、右键菜单、确认框
+│     ├─ icons.js             # 内联 SVG 图标
+│     └─ util.js              # 工具函数（escape/时间/存储）
+├─ desktop/                   # Electron 桌面端
+│  ├─ main.js                 # 窗口/菜单/托盘/单实例/证书信任/本机服务器/启动页
+│  ├─ preload.js              # contextBridge 暴露 window.deepscord
+│  ├─ bootstrap.html          # 启动页：连接服务器 / 启动本机服务器
+│  ├─ package.json            # productName=Deepscord, version=1.0.0
+│  └─ assets/                 # icon.png / icon.ico
+├─ desktop-lite/              # 【实验·已搁置】WebView2 轻量版原型（C#）
+├─ tools/
+│  ├─ sync-appserver.cjs      # 把 server.js/lib/public 复制进 desktop/app-server
+│  ├─ make_icon.py            # Pillow 生成图标
+│  ├─ migrate-store.cjs       # 数据迁移：旧品牌改名 / --clean-tests 清测试消息
+│  ├─ cleanup-brand.cjs       # 一次性旧品牌清理（历史工具）
+│  ├─ rename-brand.cjs        # 一次性改名（历史工具）
+│  └─ build-lite.ps1          # 轻量版构建脚本（搁置）
+├─ test/                      # 自动化测试（见第 10 节）
+├─ deploy/                    # Caddy / Nginx / systemd / coturn / Windows 增量更新脚本
+├─ docs/screenshots/          # 界面截图 01~14
+├─ Dockerfile / docker-compose.yml / .dockerignore
+├─ start.bat                  # 本机 HTTP 启动（Windows）
+├─ enable-lan.bat             # 局域网 HTTPS 启动（自签证书）
+├─ package.json               # 脚本与 devDependencies（electron / packager）
+└─ README.md                  # 使用与部署文档
+```
+
+---
+
+## 5. 本地怎么跑
+
+**前置**：Node.js ≥ 18（建议 22 LTS）。Windows 下 `start.bat` 可一键启动。
+
+```powershell
+cd deepscord
+node server.js                 # 默认 http://127.0.0.1:3000（无口令）
+# 或 npm start
+```
+
+- 打开 <http://127.0.0.1:3000>，输入昵称进入（本机无需口令）。
+- 设置访问口令：`$env:ECHO_PASSWORD='your-pass'; node server.js`
+- 局域网/手机 HTTPS：双击 `enable-lan.bat`（自动生成 `certs/` 自签证书，端口 3443）。
+- Docker：`docker compose up -d --build`（需要域名 + Caddy 才能自动 HTTPS；见 `deploy/Caddyfile`）。
+
+**桌面端开发**：
+
+```powershell
+npm install                    # 国内建议先设 ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
+npm run desktop:dev            # 同步 app-server 并启动 Electron（不打包）
+npm run desktop:build          # 打包到 dist\Deepscord-win32-x64\
+```
+
+---
+
+## 6. 配置项（环境变量）
+
+后端读取（`server.js`）：
+
+| 变量 | 默认 | 说明 |
+| --- | --- | --- |
+| `PORT` / `HTTP_PORT` | `3000` | 纯 HTTP 端口（线上只绑 127.0.0.1） |
+| `HTTP_HOST` | 空（所有网卡） | HTTP 绑定地址；线上 `127.0.0.1` 让公网只能走 HTTPS |
+| `HTTPS_PORTS` | 空 | 逗号分隔的 HTTPS 端口，如 `443,3443`；空 = 不开 HTTPS |
+| `HTTPS_PORT` | `3443` | 兼容旧配置的单端口写法 |
+| `ECHO_PASSWORD` | 空 | 访问口令；空 = 无需口令 |
+| `ECHO_DATA_DIR` | 项目下 `data/` | 数据目录（store.json） |
+| `HISTORY_LIMIT` | `300` | 每频道保留消息条数上限 |
+| `STUN_URLS` / `STUN_URL` | 空 | 逗号分隔的 STUN 列表 |
+| `TURN_URL` / `TURN_USERNAME` / `TURN_CREDENTIAL` | 空 | 可选 TURN 中继 |
+| `PORT`（桌面本机模式） | `38480` | 桌面端内置服务器端口（`DEEPSCORD_USER_DATA` 仅桌面测试用） |
+
+> 历史命名：口令/数据变量前缀仍是 `ECHO_`，不要随意改名（线上 bat、Docker、测试都依赖）。
+
+---
+
+## 7. WebSocket 协议（`/ws`）
+
+客户端 → 服务端：
+
+| t | 字段 | 说明 |
+| --- | --- | --- |
+| `hello` | `name`、`password`、`color?` | 握手；有口令时必须带正确 `password` |
+| `rename` | `name`、`color` | 改昵称/头像颜色 |
+| `joinVoice` | `channelId` | 加入语音频道（会做人数上限校验） |
+| `leaveVoice` | — | 离开语音 |
+| `micState` | `muted`、`deafened` | 静音/闭音状态同步 |
+| `signal` | `to`、`data` | WebRTC offer/answer/candidate 转发（仅同频道） |
+| `chat` | `channelId`、`text` | 发消息（≤2000 字） |
+| `createChannel` | `serverId`、`type`(`voice`/`text`)、`name`、`userLimit?` | 建频道 |
+| `updateChannel` | `channelId`、`name?`、`userLimit?` | 改频道（名称/上限） |
+| `deleteChannel` | `channelId` | 删频道（连带消息） |
+| `createServer` | `name` | 建服务器（默认带「大厅/闲聊」） |
+| `deleteServer` | `serverId` | 删服务器 |
+| `ping` | `ts` | 心跳，服务端回 `pong` |
+
+服务端 → 客户端：
+
+| t | 说明 |
+| --- | --- |
+| `welcome` | `selfId`、`you`、`users`、`servers`、`messages`、`config` |
+| `servers` | 频道/服务器结构变化广播 |
+| `userJoined` / `userLeft` / `userUpdated` | 成员变化 |
+| `voiceState` | `userId`、`channelId`、`muted`、`deafened` |
+| `voicePeers` | `channelId`、`peers`（加入频道后返回已在房间的人） |
+| `signal` | `from`、`data` |
+| `message` | `channelId`、`message`（普通/系统消息） |
+| `error` | `message`（如「人数已满」） |
+| `authFailed` | `message`（口令错误/限流） |
+| `pong` | `ts`（延迟计算） |
+
+限流：同一 IP 连续 5 次口令错误 → 封 60 秒（内存 Map，重启清零）。
+
+---
+
+## 8. 数据模型（`data/store.json`）
+
+```jsonc
+{
+  "version": 1,
+  "servers": [
+    {
+      "id": "srv-main",
+      "name": "Deepscord",
+      "icon": "D",
+      "color": "#7c6cf5",
+      "channels": [
+        { "id": "ch-lobby", "name": "大厅", "type": "voice", "userLimit": 0 },
+        { "id": "ch-squad", "name": "开黑房", "type": "voice", "userLimit": 8 },
+        { "id": "ch-chat",  "name": "闲聊", "type": "text",  "userLimit": 0 }
+      ]
+    }
+  ],
+  "messages": {
+    "ch-chat": [
+      { "id": "msg-…", "userId": "u-…", "name": "小满", "color": "#7c6cf5",
+        "text": "你好", "ts": 1762350000000, "system": false }
+    ]
+  }
+}
+```
+
+- 用户/在线状态/语音房间**不落盘**，只在内存；重启后用户需重新登录。
+- 写入：改动后 300ms 防抖原子写（临时文件 + rename）。
+- 迁移：`tools/migrate-store.cjs`（服务器改名 + 清理测试消息），用法见 12.7。
+- 备份：直接复制 `C:\Deepscord\data\store.json`（见 12.8）。
+
+---
+
+## 9. 桌面端要点（`desktop/main.js`）
+
+- 不预置公共服务器地址。保存的连接配置位于 `%APPDATA%\Deepscord\config.json`，服务器列表由工作区保存。
+- 启动页 `bootstrap.html`：连接服务器 / 启动本机服务器（`127.0.0.1:38480`，用 `ELECTRON_RUN_AS_NODE=1` 拉起 `resources/app/app-server/server.js`）。
+- 证书：不预置信任公共主机。首次使用自签证书需核对指纹；确认后固定证书，变化会阻止连接。
+- 菜单：文件 → 切换服务器…（`Ctrl+Shift+S`）/ 重新连接 / 资源管理 / 隐藏到托盘 / 退出。
+- 托盘：单击显示/隐藏，右键切换服务器/退出；关闭窗口只隐藏（语音不断）。
+- 单实例：第二次启动聚焦已有窗口。
+- 数据目录隔离（测试用）：设置 `DEEPSCORD_USER_DATA` 环境变量。
+- 打包：`npm run desktop:build`，产物 `dist\Deepscord-win32-x64\`；**必须重打包才会把网页端改动带进 exe**。
+
+---
+
+## 10. 测试体系
+
+| 文件 | 项数 | 前置条件 | 命令 |
+| --- | --- | --- | --- |
+| `test/smoke.mjs` | 24 | 本机 `node server.js`（3000） | `node test/smoke.mjs` |
+| `test/auth.mjs` | 10 | 自动拉起带口令实例（端口 3100+） | `node test/auth.mjs` |
+| `test/e2e.mjs` | 23 | 服务 + Chrome（假麦克风，端口 9411/9412） | `node test/e2e.mjs` |
+| `test/ui.mjs` | 31 | 服务 + Chrome（端口 9421/9422，HTTPS 3443） | `node test/ui.mjs` |
+| `test/deploy-check.mjs` | 12 | 线上服务器可访问 | `node test/deploy-check.mjs` |
+| `test/desktop-check.mjs` | 14 | 启动桌面端并开 CDP 调试端口 | 见下 |
+
+浏览器测试依赖：Chrome 位于 `C:\Program Files\Google\Chrome\Application\chrome.exe`（`test/cdp.mjs` 中写死，可改）。
+
+桌面端测试：
+
+```powershell
+# 1) 先彻底退出已有 Deepscord
+Remove-Item Env:\ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue   # 本机环境可能默认带该变量
+$env:DEEPSCORD_USER_DATA = "$env:TEMP\deepscord-test"                 # 隔离用户数据，保证是首次启动
+& .\dist\Deepscord-win32-x64\Deepscord.exe --remote-debugging-port=9331
+# 2) 另一个窗口
+node test/desktop-check.mjs        # 默认连 9331；可用 DESKTOP_CDP_PORT 改
+```
+
+测试会刷新 `docs/screenshots/` 截图；`ui.mjs` 会顺带验证双击进入、右键编辑频道、麦克风监听。
+
+本次交接前回归结果（2026-11-04 19:45 前后）：smoke **24/24**、auth **10/10**、e2e **23/23**、ui **31/31**、deploy **12/12**、desktop **14/14**。
+
+常见失败：
+- 页面连不上：先确认 3000 端口服务在跑；UI 测试还会起 9443。
+- 麦克风相关失败：Chrome 启动参数必须带 `--use-fake-ui-for-media-stream --use-fake-device-for-media-stream`（`cdp.mjs` 已带）。
+- `desktop-check` 全挂：未删 `ELECTRON_RUN_AS_NODE`，Electron 被当成 Node 跑。
+- 欢迎页/首次启动相关 2 项失败：`DEEPSCORD_USER_DATA` 目录不是全新的（删掉重跑）。
+
+---
+
+## 11. 构建与发布
+
+**发网页端更新**（最快）：改 `server.js` / `public/` 后用 12.2 的 WinRM 脚本同步并重启。
+
+**发桌面端**：
+
+```powershell
+# 国内下载 Electron 先设镜像
+$env:ELECTRON_MIRROR = 'https://npmmirror.com/mirrors/electron/'
+npm install
+npm run desktop:build
+# 产物：dist\Deepscord-win32-x64\Deepscord.exe
+# 版本号在 desktop/package.json（version）与 --app-version 里改
+```
+
+- 想改图标：`tools/make_icon.py` 重新生成 `desktop/assets/icon.ico|png`。
+- 品牌：`desktop/main.js`、`public/index.html`、`server.js` 默认数据；客户端无预置公共服务器地址。
+- 代码签名/安装包：当前没有，发布给外部用户前建议做代码签名 + NSIS 安装包。
+- **轻量版**：`desktop-lite/` 是 WebView2 原型（exe 可 <100KB，依赖系统 WebView2），按决策已搁置，未参与发布；继续做时看 `desktop-lite/README.md` 与 `tools/build-lite.ps1`。
+
+---
+
+## 12. 生产运维手册
+
+### 12.1 当前部署结构
+
+```
+C:\node\                        # 便携版 Node v22.12.0（加入 PATH）
+C:\Deepscord\
+├─ server.js                    # 后端
+├─ lib\ws.js
+├─ public\                      # 前端
+├─ data\store.json              # 聊天/频道数据（备份重点）
+├─ logs\server.log              # stdout/stderr 日志
+├─ certs\server.crt|server.key  # 自签证书
+├─ access-password.txt          # 口令备忘（16 字节）
+├─ run-deepscord.bat            # 启动 + 看门狗循环
+├─ package.json / README.md
+```
+
+计划任务：`\Deepscord`，触发器「系统启动」，以 SYSTEM 运行 `C:\Deepscord\run-deepscord.bat`；bat 内层 `:loop` 每 3 秒重启 node，实现崩溃自动拉起。
+
+端口：`443`/`3443` 监听 0.0.0.0（HTTPS）；`3000` 只监听 `127.0.0.1`（HTTP/健康检查）；`5985` WinRM；`3389` RDP。腾讯云安全组需放行 443/3443（以及按需的 3389/5985）。
+
+证书应由部署管理员按实际域名配置。桌面端没有默认信任的公共主机；自签证书必须先核对指纹。
+
+### 12.2 更新线上代码（WinRM）
+
+本机已信任主机；服务器已开 WinRM。项目自带脚本：
+
+```powershell
+cd deepscord
+.\deploy\windows\update.ps1 -ComputerName server.example.invalid
+# 或显式给凭据
+$cred = Get-Credential Administrator
+.\deploy\windows\update.ps1 -ComputerName server.example.invalid -Credential $cred
+```
+
+脚本做：上传 `server.js`、`lib/`、`public/` → 停止计划任务 → 重启 → 健康检查。**不会覆盖** `run-deepscord.bat`（口令/端口配置安全）。
+
+手工等价流程：
+
+```powershell
+$s = New-PSSession -ComputerName server.example.invalid -Credential (Get-Credential) -Authentication Negotiate
+Invoke-Command -Session $s { schtasks /End /TN Deepscord; Get-Process node -EA SilentlyContinue | Stop-Process -Force }
+Copy-Item server.js -Destination C:\Deepscord\server.js -ToSession $s -Force
+Copy-Item public  -Destination C:\Deepscord -ToSession $s -Recurse -Force
+Invoke-Command -Session $s { schtasks /Run /TN Deepscord }
+```
+
+更新后验证：`curl.exe -sk https://server.example.invalid/api/health` 应返回 `{"ok":true,...}`。
+
+### 12.3 启停 / 排障命令
+
+```powershell
+schtasks /End /TN Deepscord        # 停止
+schtasks /Run /TN Deepscord        # 启动
+Get-Content C:\Deepscord\logs\server.log -Tail 50
+Get-NetTCPConnection -State Listen | ? LocalPort -in 443,3443,3000
+curl.exe -sk https://127.0.0.1/api/health
+```
+
+### 12.4 修改访问口令
+
+编辑服务器 `C:\Deepscord\run-deepscord.bat` 中 `set ECHO_PASSWORD=...`，保存后重启任务；同时更新 `access-password.txt` 并通知使用者。**不要改 `start.bat` 之类本机脚本，线上只认 bat 里的环境变量。**
+
+### 12.5 换域名 / 正式证书（推荐后续做）
+
+- 有域名：用 `deploy/Caddyfile`（Docker Compose，自动 Let's Encrypt）或 `deploy/nginx.conf`（Nginx + certbot）。
+- 想在现有 Windows 上继续用自签：用 Git openssl 或 `enable-lan.bat` 同款命令重生成证书，替换 `C:\Deepscord\certs\`，重启任务。
+- 换域名后向成员提供新地址，由成员在加入界面填写；无需把部署地址写入客户端源码。
+
+### 12.6 加 TURN（严格 NAT 语音不通时）
+
+`run-deepscord.bat` 增加：
+
+```bat
+set TURN_URL=turn:你的域名:3478
+set TURN_USERNAME=deepscord
+set TURN_CREDENTIAL=强密码
+```
+
+服务器安装 coturn，配置参考 `deploy/coturn.conf`；重启任务后 `/api/config` 会返回 TURN。
+
+### 12.7 清理测试消息 / 数据迁移
+
+```powershell
+# 上传迁移脚本到服务器执行
+Copy-Item tools\migrate-store.cjs -Destination C:\Deepscord\ -ToSession $s -Force
+Invoke-Command -Session $s {
+  schtasks /End /TN Deepscord; Get-Process node -EA SilentlyContinue | Stop-Process -Force
+  & C:\node\node.exe C:\Deepscord\migrate-store.cjs C:\Deepscord\data\store.json --clean-tests
+  schtasks /Run /TN Deepscord
+}
+```
+
+`migrate-store.cjs` 还支持服务器/频道旧名改名（不带参数即全量迁移），执行前先备份 store.json。
+
+### 12.8 备份 / 恢复
+
+```powershell
+# 备份
+Copy-Item C:\Deepscord\data\store.json "C:\Deepscord\backup\store-$(Get-Date -f yyyyMMdd-HHmm).json"
+# 恢复：停止任务 → 覆盖 store.json → 启动任务
+```
+
+建议每天定时复制到 `C:\Deepscord\backup\`（最多 2 周），或同步到对象存储。
+
+### 12.9 重置全部数据
+
+停止任务 → 删除/改名 `C:\Deepscord\data\store.json` → 启动任务。会重新生成默认服务器/频道（大厅/开黑房/闲聊/音乐电台），**聊天记录不可恢复**。
+
+---
+
+## 13. 已知问题、限制与风险
+
+| 项 | 说明 / 建议 |
+| --- | --- |
+| **RDP 密码已泄露在历史聊天** | 交接后立刻改 Administrator 密码；安全组限制 3389/5985 来源 IP，或改用 VPN |
+| 访问口令写在 README/文档里 | 交接后改口令（12.4），不要把新口令提交进仓库 |
+| 自签证书 | 桌面端需核对指纹后确认，没有默认信任的公共主机。正式上线建议域名 + Let's Encrypt |
+| 语音 mesh | 同频道人数越多上行越大，建议 ≤8；跨运营商严格 NAT 需要 TURN |
+| 无 TURN | 目前仅 STUN（QQ/小米/Google），部分网络语音可能连不上 |
+| 明文口令传输 | HTTP 3000 已绑 127.0.0.1；公网只走 HTTPS，但口令本身仍是业务层明文（自签加密链路） |
+| 单机单进程 | 无集群/水平扩展；重启用户掉线（客户端会自动重连回语音频道） |
+| 用户/在线状态不落盘 | 重启后需重新进入；聊天记录保留 |
+| 数据是单个 JSON | 数据量很大时性能下降（消息每频道上限 300，量级可控）；大规模需换 SQLite/Postgres |
+| 桌面端体积 | Electron 自带 Chromium，exe 237.9 MB / 目录 357 MB，属正常；轻量版已搁置 |
+| 桌面端无签名 | 首次运行可能触发 SmartScreen「更多信息 → 仍要运行」 |
+| 无安装包/自动更新 | 绿色目录分发；更新需手动替换目录 |
+| 品牌历史命名 | 环境变量/部分脚本仍用 `ECHO_` 前缀、Docker 服务名 `deepscord`（已改为 deepscord）；改名需同步部署 |
+| 单管理员权限 | 任何在线用户都能建/删频道、改服务器；没有角色/权限系统（Discord 级权限未做） |
+
+---
+
+## 14. 后续路线图建议（按优先级）
+
+1. **安全收尾**：改服务器管理员密码/SSH/RDP 限制、改访问口令、Git 仓库私有化，删除文档里的历史口令。
+2. **域名 + 正式证书**：消除证书警告；顺便桌面端默认地址可继续用 IP 或换域名。
+3. **TURN 中继**：coturn + `TURN_*` 环境变量，提升语音连通率。
+4. **权限系统**：管理员/普通成员，限制建删频道、踢人、静音他人。
+5. **安装包与签名**：NSIS/MSIX + 代码签名，便于分发给非技术用户。
+6. **数据升级**：store.json → SQLite（消息分页查询），加备份任务。
+7. **移动端/轻量版**：轻量版原型（WebView2）可作为「不装 Chromium」的入口继续完善；或用 PWA。
+8. **可观测性**：请求日志、在线数/语音房间指标、告警（磁盘/进程/证书到期）。
+
+---
+
+## 15. 交接检查清单
+
+- [ ] 拿到源码包并能 `node server.js` 启动（http://127.0.0.1:3000）
+- [ ] 拿到运行版并双击 `Deepscord.exe`，能连上官方服务器、听到语音
+- [ ] 能登录服务器（RDP/WinRM），确认计划任务 `Deepscord` 在运行
+- [ ] 确认已修改服务器管理员密码与访问口令（或明确交接后由对方改）
+- [ ] 备份 `C:\Deepscord\data\store.json` 一份
+- [ ] 本地 `npm install` + `npm run desktop:build` 能打出 exe（首次下载 Electron 可能需镜像）
+- [ ] 跑通 smoke / auth / e2e / ui（本地）与 deploy-check（线上）
+- [ ] 桌面端用 `--remote-debugging-port` + `desktop-check` 跑通 14 项
+- [ ] 明确域名/证书/TURN/续费（服务器到期时间）等后续负责人
+- [ ] 确认腾讯云账号、服务器到期时间、安全组规则由谁维护
+
+---
+
+## 16. 常见问题排查（FAQ）
+
+| 现象 | 排查 |
+| --- | --- |
+| 打不开网页 | `https://` 别用 `http://`；443 是否放行；任务是否在跑；看 logs/server.log |
+| 页面能开但提示「连接失败」 | 443/3443 安全组；证书信任；`/api/health` 是否 200 |
+| 输入口令后一直连不上 | 口令大小写；连续错误触发 60 秒限流，等一分钟；确认 bat 里 ECHO_PASSWORD |
+| 能进语音但听不到 | 浏览器/系统麦克风权限；设置里选对输入输出设备；对方是否静音；严格 NAT 需 TURN |
+| 说话没有绿环 | 输入模式（语音感应/按键）；灵敏度阈值；麦克风监听可辅助测试 |
+| 人数上限改了没生效 | 是否保存成功；频道栏比例；满员时服务端拒绝并弹提示 |
+| 桌面端双击进不了频道 | 旧版 bug 已修：单击选中、双击进入（420ms 内两次）。确保用最新 exe，并彻底退出托盘旧进程 |
+| 桌面端打不开/白屏 | `ELECTRON_RUN_AS_NODE` 环境变量（仅测试机）；删除 `%APPDATA%\Deepscord` 重置；启动页重选服务器 |
+| 关闭窗口后进程还在 | 正常，托盘常驻；彻底退出用菜单「文件 → 退出 Deepscord」 |
+| 打包 exe 后页面是旧的 | 网页改动需要重新 `npm run desktop:build` |
+| 服务器重启后数据没了 | 检查 `ECHO_DATA_DIR` 是否指向 `C:\Deepscord\data`；备份恢复 |
+| 证书过期 | 重新生成 certs（12.5），重启任务 |
+
+---
+
+## 17. 附录：快速命令
+
+```powershell
+# 本地开发
+node server.js
+$env:ECHO_PASSWORD='test'; node server.js
+npm run desktop:build
+
+# 测试
+node test/smoke.mjs
+node test/auth.mjs
+node test/e2e.mjs
+node test/ui.mjs
+node test/deploy-check.mjs
+
+# 线上
+curl.exe -sk https://server.example.invalid/api/health
+.\deploy\windows\update.ps1 -ComputerName server.example.invalid
+schtasks /Query /TN Deepscord /FO LIST
+Get-Content C:\Deepscord\logs\server.log -Tail 50
+```
+
+**常用端口**：3000（本机 HTTP）、3443（局域网/备用 HTTPS）、443（线上 HTTPS）、38480（桌面本机模式）、9331（桌面测试 CDP）、9411/9412/9421/9422（E2E 测试 Chrome）。
+
+---
+
+*文档结束。如代码有较大改动，请同步更新本文件与 README。*

@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'" />
+  <title>Deepscord</title>
+  <style>
+    :root {
+      --bg: #0b0d12;
+      --card: #11141b;
+      --line: rgba(255, 255, 255, 0.08);
+      --text: #e9ecf5;
+      --text-2: #a3aabf;
+      --text-3: #6d7488;
+      --accent: #7c6cf5;
+      --accent-2: #8f80ff;
+      --danger: #f2556b;
+      --green: #4dd4ac;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: var(--font);
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(900px 520px at 78% -10%, rgba(124, 108, 245, 0.16), transparent 62%),
+        radial-gradient(720px 460px at 0% 110%, rgba(77, 212, 172, 0.07), transparent 62%),
+        var(--bg);
+      overflow: auto;
+      padding: 24px 0;
+      user-select: none;
+    }
+    .card {
+      width: 600px;
+      max-width: calc(100vw - 64px);
+      background: rgba(17, 20, 27, 0.92);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 34px 34px 26px;
+      box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55);
+    }
+    .brand { display: flex; align-items: center; gap: 16px; margin-bottom: 26px; }
+    .brand img { width: 64px; height: 64px; border-radius: 18px; box-shadow: 0 12px 30px -10px rgba(124, 108, 245, 0.8); }
+    .brand h1 { margin: 0; font-size: 26px; letter-spacing: -0.01em; }
+    .brand p { margin: 4px 0 0; color: var(--text-3); font-size: 12.5px; }
+    label { display: block; font-size: 12px; color: var(--text-3); margin: 0 0 8px 2px; letter-spacing: 0.02em; }
+    .input {
+      width: 100%;
+      background: #0a0d13;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: 14px;
+      padding: 12px 14px;
+      outline: none;
+      user-select: text;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .input:focus { border-color: rgba(124, 108, 245, 0.55); box-shadow: 0 0 0 3px rgba(124, 108, 245, 0.14); }
+    .row { display: flex; gap: 10px; margin-top: 18px; }
+    button {
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      border: 1px solid transparent;
+      border-radius: 11px;
+      padding: 11px 16px;
+      font-family: var(--font);
+      font-size: 13.5px;
+      font-weight: 550;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .primary {
+      background: linear-gradient(180deg, #8b7cff, #6b59ee);
+      color: #fff;
+      box-shadow: 0 12px 26px -12px rgba(124, 108, 245, 0.9);
+    }
+    .primary:hover { filter: brightness(1.08); transform: translateY(-1px); }
+    .ghost { background: rgba(255, 255, 255, 0.045); border-color: var(--line); color: var(--text-2); }
+    .ghost:hover { background: rgba(255, 255, 255, 0.08); color: var(--text); }
+    button:disabled { opacity: 0.55; cursor: default; transform: none; }
+    .hint { margin: 14px 2px 0; color: var(--text-3); font-size: 11.5px; line-height: 1.7; }
+    .error {
+      margin: 16px 0 0;
+      padding: 10px 13px;
+      border-radius: 10px;
+      background: rgba(242, 85, 107, 0.12);
+      border: 1px solid rgba(242, 85, 107, 0.35);
+      color: #ff9aa8;
+      font-size: 12.5px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      user-select: text;
+      display: none;
+    }
+    .error.show { display: block; }
+    .foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 24px;
+      padding-top: 16px;
+      border-top: 1px solid var(--line);
+      color: var(--text-3);
+      font-size: 11px;
+    }
+    .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--green); margin-right: 6px; box-shadow: 0 0 8px var(--green); }
+    .busy { pointer-events: none; opacity: 0.7; }
+    details { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 16px; }
+    summary { cursor: pointer; color: var(--text-2); font-size: 14px; margin-bottom: 14px; }
+    textarea { resize: vertical; min-height: 76px; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand">
+      <img src="assets/icon.png" alt="Deepscord" />
+      <div>
+        <h1>Deepscord</h1>
+        <p>语音频道桌面客户端</p>
+      </div>
+    </div>
+
+    <form id="directCreateForm">
+      <label for="directAddress">创建直连房间 · 对方能访问的本机地址</label>
+      <div class="row" style="margin-top:0">
+        <input id="directAddress" class="input" list="directAddresses" required autocomplete="off" spellcheck="false" placeholder="192.168.1.10 或 [公网IPv6]" />
+        <input id="directPort" class="input" type="number" min="1024" max="65535" value="38481" required aria-label="房间端口" style="width:120px" />
+      </div>
+      <datalist id="directAddresses"></datalist>
+      <p class="hint">适合局域网或成员之间可达的公网 IPv6。房间使用所填 TCP 端口；只映射该端口不保证语音可达，每对成员还需 UDP 互通。本模式不使用外部发现或中继；房主退出程序后不能再加入新成员。</p>
+      <div class="row"><button id="directCreateBtn" class="primary" type="submit">创建房间</button></div>
+    </form>
+    <div id="directCreated" hidden>
+      <label for="directInvite">房间邀请 · 仅分享给要加入的人</label>
+      <textarea id="directInvite" class="input" readonly spellcheck="false"></textarea>
+      <div class="row">
+        <button id="directCopyBtn" class="ghost" type="button">复制邀请</button>
+        <button id="directEnterBtn" class="primary" type="button">进入房间</button>
+      </div>
+    </div>
+    <details open>
+      <summary>通过邀请加入房间</summary>
+      <form id="directJoinForm">
+        <label for="directJoinInvite">粘贴房主提供的完整邀请</label>
+        <textarea id="directJoinInvite" class="input" required autocomplete="off" spellcheck="false" placeholder="deepscord://join?…"></textarea>
+        <div class="row"><button id="directJoinBtn" type="submit" class="ghost">加入房间</button></div>
+      </form>
+    </details>
+    <details id="steamMode">
+      <summary>Steam 牵线（开发测试）</summary>
+      <p class="hint">双方先启动并登录 Steam。示例 AppID 480 仅用于开发测试，正式发布需使用自己的 AppID。Steam 只负责房间和信令，不传输语音；语音仍由成员之间的 WebRTC 连接承担，网络不通时仍可能无法通话。</p>
+      <form id="steamCreateForm">
+        <label for="steamAppId">Steam AppID</label>
+        <input id="steamAppId" class="input" type="number" min="1" max="4294967295" step="1" value="480" required />
+        <label for="steamStunUrls" style="margin-top:14px">语音地址发现（STUN，每行一个；留空仅使用本机候选）</label>
+        <textarea id="steamStunUrls" class="input" spellcheck="false">stun:stun.cloudflare.com:3478</textarea>
+        <p class="hint">地址发现仅辅助成员直连，不承载语音。</p>
+        <div class="row"><button id="steamCreateBtn" class="primary" type="submit">创建 Steam 房间</button></div>
+      </form>
+      <div id="steamCreated" hidden>
+        <label for="steamInvite" style="margin-top:14px">Steam 房间邀请 · 仅分享给要加入的人</label>
+        <textarea id="steamInvite" class="input" readonly spellcheck="false"></textarea>
+        <div class="row">
+          <button id="steamCopyBtn" class="ghost" type="button">复制邀请</button>
+          <button id="steamEnterBtn" class="primary" type="button">进入 Steam 房间</button>
+        </div>
+      </div>
+      <form id="steamJoinForm" style="margin-top:18px">
+        <label for="steamJoinInvite">粘贴完整 Steam 邀请</label>
+        <textarea id="steamJoinInvite" class="input" required autocomplete="off" spellcheck="false" placeholder="deepscord://steam?appid=480&amp;lobby=…#token=…"></textarea>
+        <div class="row"><button id="steamJoinBtn" class="ghost" type="submit">通过 Steam 邀请加入</button></div>
+      </form>
+    </details>
+    <details>
+      <summary>连接独立自建服务器</summary>
+    <form id="form">
+      <label for="server">服务器地址</label>
+      <input id="server" class="input" spellcheck="false" autocomplete="off" placeholder="https://你的服务器/" />
+      <div class="row">
+        <button type="submit" class="primary" id="connectBtn">连接服务器</button>
+      </div>
+    </form>
+    <p class="hint">自建服务器需单独部署和启动独立服务端，再填写其 HTTPS 地址连接。临时与朋友直连请使用上方的创建房间和邀请。</p>
+    </details>
+
+    <div class="error" id="error"></div>
+
+    <div class="foot">
+      <span><span class="dot"></span><span id="status">准备就绪</span></span>
+      <span id="version">Deepscord</span>
+    </div>
+  </div>
+
+  <script>
+    const api = window.deepscord;
+    const form = document.getElementById('form');
+    const input = document.getElementById('server');
+    const errorBox = document.getElementById('error');
+    const statusEl = document.getElementById('status');
+    const versionEl = document.getElementById('version');
+    const connectBtn = document.getElementById('connectBtn');
+
+    function showError(text) {
+      errorBox.textContent = text;
+      errorBox.classList.add('show');
+      statusEl.textContent = '连接失败';
+    }
+
+    function setBusy(busy, text) {
+      form.classList.toggle('busy', busy);
+      connectBtn.disabled = busy;
+      statusEl.textContent = text || (busy ? '正在连接…' : '准备就绪');
+    }
+
+    async function init() {
+      const params = new URLSearchParams(location.search);
+      const error = params.get('error');
+      if (error) showError(error);
+      if (!api) {
+        showError('预加载脚本未就绪（preload）');
+        return;
+      }
+      try {
+        const cfg = await api.getConfig();
+        input.value = cfg.serverUrl || cfg.defaultServer || '';
+        versionEl.textContent = 'v' + cfg.version + ' · Electron ' + cfg.electron;
+        const addresses = document.getElementById('directAddresses');
+        for (const address of cfg.directAddresses) {
+          const option = document.createElement('option');
+          option.value = address;
+          addresses.append(option);
+        }
+        document.getElementById('directAddress').value = cfg.directAddresses[0] || '';
+        const active = await api.getDirectSession();
+        if (active && active.role === 'host') showDirectRoom(active);
+        const steam = await api.getSteamSession();
+        if (steam) showSteamRoom(steam);
+        input.focus();
+        input.select();
+      } catch (err) {
+        showError('读取配置失败：' + (err && err.message ? err.message : err));
+      }
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const url = input.value.trim();
+      if (!url) {
+        showError('请输入服务器地址');
+        return;
+      }
+      errorBox.classList.remove('show');
+      setBusy(true, '正在连接…');
+      try {
+        const res = await api.connect(url);
+        if (res && res.ok) {
+          setBusy(true, '已连接，正在加载…');
+        } else {
+          setBusy(false);
+          showError((res && res.error) || '连接失败');
+        }
+      } catch (err) {
+        setBusy(false);
+        showError('连接失败：' + (err && err.message ? err.message : err));
+      }
+    });
+
+    function showDirectRoom(room) {
+      document.getElementById('steamCreated').hidden = true;
+      document.getElementById('directInvite').value = room.invite;
+      document.getElementById('directCreated').hidden = false;
+      statusEl.textContent = '房间已创建，复制邀请给朋友';
+    }
+
+    async function directAction(button, action) {
+      button.disabled = true;
+      errorBox.classList.remove('show');
+      try {
+        await action();
+      } catch (error) {
+        showError(error.message);
+      } finally { button.disabled = false; }
+    }
+
+    document.getElementById('directCreateForm').addEventListener('submit', (event) => {
+      event.preventDefault();
+      directAction(document.getElementById('directCreateBtn'), async () => {
+        statusEl.textContent = '正在创建临时加密房间…';
+        const result = await api.createDirect({ address: document.getElementById('directAddress').value.trim(), port: Number(document.getElementById('directPort').value) });
+        if (!result.ok) throw new Error(result.error);
+        showDirectRoom(result.session);
+      });
+    });
+    document.getElementById('directJoinForm').addEventListener('submit', (event) => {
+      event.preventDefault();
+      directAction(document.getElementById('directJoinBtn'), async () => {
+        const result = await api.joinDirect(document.getElementById('directJoinInvite').value.trim());
+        if (!result.ok) throw new Error(result.error);
+      });
+    });
+    document.getElementById('directCopyBtn').addEventListener('click', () => directAction(document.getElementById('directCopyBtn'), async () => {
+      await navigator.clipboard.writeText(document.getElementById('directInvite').value);
+      statusEl.textContent = '邀请已复制';
+    }));
+    document.getElementById('directEnterBtn').addEventListener('click', () => directAction(document.getElementById('directEnterBtn'), async () => {
+      const result = await api.enterDirect();
+      if (!result.ok) throw new Error(result.error);
+    }));
+
+    function showSteamRoom(room) {
+      document.getElementById('directCreated').hidden = true;
+      document.getElementById('steamMode').open = true;
+      document.getElementById('steamInvite').value = room.invite;
+      document.getElementById('steamCreated').hidden = false;
+      statusEl.textContent = 'Steam 房间已就绪 · 语音连接需另行建立';
+    }
+
+    document.getElementById('steamCreateForm').addEventListener('submit', (event) => {
+      event.preventDefault();
+      directAction(document.getElementById('steamCreateBtn'), async () => {
+        statusEl.textContent = '正在通过 Steam 创建房间…';
+        const result = await api.createSteam({
+          appId: Number(document.getElementById('steamAppId').value),
+          stunUrls: document.getElementById('steamStunUrls').value.split(/\r?\n/).map((url) => url.trim()).filter(Boolean),
+        });
+        if (!result.ok) throw new Error(result.error);
+        showSteamRoom(result.session);
+      });
+    });
+    document.getElementById('steamJoinForm').addEventListener('submit', (event) => {
+      event.preventDefault();
+      directAction(document.getElementById('steamJoinBtn'), async () => {
+        statusEl.textContent = '正在通过 Steam 加入房间…';
+        const result = await api.joinSteam(document.getElementById('steamJoinInvite').value.trim());
+        if (!result.ok) throw new Error(result.error);
+      });
+    });
+    document.getElementById('steamCopyBtn').addEventListener('click', () => directAction(document.getElementById('steamCopyBtn'), async () => {
+      await navigator.clipboard.writeText(document.getElementById('steamInvite').value);
+      statusEl.textContent = 'Steam 邀请已复制';
+    }));
+    document.getElementById('steamEnterBtn').addEventListener('click', () => directAction(document.getElementById('steamEnterBtn'), async () => {
+      const result = await api.enterSteam();
+      if (!result.ok) throw new Error(result.error);
+    }));
+
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "id": "industrial",
+  "name": "工程站 · 低动效",
+  "description": "紧凑的工业控制台，保留固定频道栏和低动态表现。",
+  "theme": {
+    "accent": "#87d8ce",
+    "background": "charcoal",
+    "density": "comfortable",
+    "corners": "square"
+  },
+  "interfaceProfile": {
+    "version": 1,
+    "preset": "industrial",
+    "motion": "reduced",
+    "navigation": "rail",
+    "memberPanel": "expanded"
+  },
+  "options": [
+    {
+      "id": "content-spacing",
+      "label": "内容间距",
+      "type": "range",
+      "default": 12,
+      "min": 8,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "cssVariable": "--scheme-content-spacing"
+    },
+    {
+      "id": "title-scale",
+      "label": "标题比例",
+      "type": "range",
+      "default": 1,
+      "min": 0.8,
+      "max": 1.4,
+      "step": 0.05,
+      "unit": "",
+      "cssVariable": "--scheme-title-scale"
+    }
+  ]
+}

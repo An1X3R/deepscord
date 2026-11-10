@@ -1,0 +1,25 @@
+{
+  "format": 1,
+  "id": "interaction-examples",
+  "name": "互动动画开发示例",
+  "version": "1.0.0",
+  "kind": "interactions",
+  "entries": [
+    {
+      "file": "default-bomb.json",
+      "name": "炸弹"
+    },
+    {
+      "file": "default-poop.json",
+      "name": "便便"
+    },
+    {
+      "file": "playful-fist.json",
+      "name": "轻轻捶你"
+    },
+    {
+      "file": "dollar-wallet.json",
+      "name": "收点小费"
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+/* Edit these semantic roles to recolor the full shell and portaled controls. */
+:root[data-interface-package='true'] {
+  color-scheme: dark;
+  --bg: #15191b; --bg-side: #1c2123; --bg-rail: #101517; --bg-elev: #252c2e; --bg-elev2: #30383a; --bg-input: #151b1d;
+  --text: #e3efea; --text-2: #a9bbb4; --text-3: #93a69d;
+  --accent: #87d8ce; --accent-2: #b6eee3; --accent-ink: #152623; --accent-soft: #87d8ce18; --accent-glow: #87d8ce30;
+  --interface-accent: var(--accent); --accent-border: color-mix(in srgb,var(--accent) 35%,transparent);
+  --line: #b5d5c21a; --line-2: #b5d5c233; --hover: #9ad9c709; --hover-2: #9ad9c716;
+  --green: #91dbbd; --green-soft: #91dbbd17; --danger: #f2556b; --danger-text: #f2a4af; --danger-soft: #f2556b24; --warn: #f5c451;
+  --radius: 4px; --shadow-lg: 0 24px 70px #0009;
+  --font: -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei','Noto Sans SC',system-ui,sans-serif;
+}
+:root[data-interface-package='true'] :is(.btn.primary,.send-btn,.rail-brand) { color: var(--accent-ink); background: var(--accent); }
+:root[data-interface-package='true'] .msg-text { color: var(--text); }
+:root[data-interface-package='true'] .msg-text strong { color: var(--text); }
+:root[data-interface-package='true'] .msg-text a { color: var(--accent-2); }
+#theme-industrial .channel.active { color: var(--text); background: var(--accent-soft); }
+#theme-industrial .channel-settings { border-radius: 2px; border-color: var(--line); }
+#theme-industrial .channel-settings:hover { color: var(--accent); background: var(--accent-soft); }
+#theme-industrial .channel.active .ch-icon { color: var(--accent); }
+
+/* The shell arranges original live nodes; media elements stay owned by the app. */
+#theme-industrial { --theme-gap: 18px; width: 100%; height: 100%; min-width: 0; min-height: 0; display: grid; grid-template: 82px minmax(0,1fr) 58px / 64px 232px minmax(0,1fr) 216px; color: var(--text); background: var(--bg); font-family: var(--font); }
+#theme-industrial *, #theme-industrial *::before, #theme-industrial *::after { box-sizing: border-box; }
+#theme-industrial [data-deepscord-slot] { min-width: 0; min-height: 0; }
+#theme-industrial button[data-theme-action] { padding: 9px 13px; border: 1px solid var(--line-2); background: var(--bg-elev); color: var(--text); font: inherit; font-size: 12px; cursor: pointer; }
+#theme-industrial button[data-theme-action]:hover, #theme-industrial button[data-theme-action][aria-pressed='true'] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+#theme-industrial button[data-theme-action]:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+#theme-industrial .theme-workstation-header { grid-column: 1 / -1; display: flex; align-items: center; gap: 24px; padding: 14px 22px; border-bottom: 1px solid var(--line-2); background: var(--bg-side); }
+#theme-industrial .theme-workstation-identity { display: flex; align-items: center; gap: 18px; flex: 1; min-width: 0; }
+#theme-industrial .theme-workstation-index { color: var(--accent); font: 30px/1 ui-monospace, monospace; letter-spacing: -.08em; }
+#theme-industrial .theme-workstation-eyebrow { margin: 0 0 5px; color: var(--text-3); font-size: 10px; letter-spacing: .12em; }
+#theme-industrial h1 { margin: 0; font-size: 19px; font-weight: 650; letter-spacing: .03em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#theme-industrial .theme-workstation-status { display: grid; gap: 5px; color: var(--text-3); font-size: 11px; }
+#theme-industrial #theme-industrial-status { color: var(--accent); }
+#theme-industrial .theme-workstation-actions { display: flex; gap: 7px; }
+#theme-industrial .theme-workstation-rail { grid-area: 2 / 1 / 4 / 2; border-right: 1px solid var(--line-2); background: var(--bg-rail); }
+#theme-industrial .rail { position: static; width: 100%; height: 100%; padding: 14px 6px; flex-direction: column; gap: 10px; border: 0; }
+#theme-industrial .rail-list { width: 100%; flex-direction: column; overflow-x: hidden; overflow-y: auto; }
+#theme-industrial .rail-item { flex: 0 0 46px; }
+#theme-industrial .rail-spacer { display: block; }
+#theme-industrial .theme-workstation-directory { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line-2); background: var(--bg-side); }
+#theme-industrial .theme-workstation-section-label { flex: none; padding: 16px 16px 12px; color: var(--text-3); font-size: 10px; letter-spacing: .1em; border-bottom: 1px solid var(--line); }
+#theme-industrial [data-deepscord-slot='sidebar'], #theme-industrial [data-deepscord-slot='members'] { flex: 1; overflow: hidden; }
+#theme-industrial .sidebar { position: static; visibility: inherit; pointer-events: inherit; display: flex; width: 100%; height: 100%; border: 0; box-shadow: none; }
+#theme-industrial .sidebar-head { height: 66px; margin: 0; padding: 15px 16px; border-width: 0 0 1px; }
+#theme-industrial .theme-workstation-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+#theme-industrial .topbar { height: 56px; padding-inline: var(--theme-gap); background: var(--bg); backdrop-filter: none; }
+#theme-industrial [data-deepscord-slot='content'] { flex: 1; overflow: hidden; display: flex; }
+#theme-industrial .content { flex: 1; min-width: 0; min-height: 0; }
+#theme-industrial .voice-stage { padding: var(--theme-gap); border-left: 0; border-bottom: 1px solid var(--line-2); background: var(--bg-side); }
+#theme-industrial .tile { background: var(--bg-elev); }
+#theme-industrial .theme-workstation-members { display: flex; flex-direction: column; min-height: 0; border-left: 1px solid var(--line-2); background: var(--bg-side); }
+#theme-industrial .members { position: static; display: block; width: 100%; height: 100%; border: 0; }
+#theme-industrial .theme-workstation-footer { grid-column: 2 / -1; display: flex; justify-content: space-between; align-items: center; gap: 20px; padding: 0 12px 0 18px; border-top: 1px solid var(--line-2); background: var(--bg-side); }
+#theme-industrial #theme-industrial-channel { color: var(--text-3); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#theme-industrial [data-deepscord-slot='self'] { width: 280px; max-width: 100%; }
+#theme-industrial .self-panel { position: static; visibility: visible; pointer-events: auto; width: 100%; height: 48px; margin: 0; padding: 5px 8px; border: 0; background: transparent; }
+#theme-industrial .media-expanded { position: fixed; inset: 138px 0 58px 296px; }
+#theme-industrial[data-density='compact'] { --theme-gap: 10px; }
+#theme-industrial[data-density='compact'] .channel { min-height: 32px; }
+#theme-industrial[data-density='compact'] .tile { min-height: 145px; padding: 14px 10px; }
+#theme-industrial[data-density='compact'] .msg { padding-block: 4px; }
+@media (max-width: 1150px) { #theme-industrial { grid-template-columns: 60px 210px minmax(0,1fr); } #theme-industrial .theme-workstation-members { display: none; } #theme-industrial .media-expanded { left: 270px; } }
+@media (max-width: 720px) {
+  #theme-industrial { grid-template: 70px minmax(0,1fr) 58px / 52px minmax(0,1fr); }
+  #theme-industrial .theme-workstation-header { gap: 8px; padding: 10px 12px; }
+  #theme-industrial .theme-workstation-index, #theme-industrial .theme-workstation-status, #theme-industrial .theme-workstation-eyebrow { display: none; }
+  #theme-industrial h1 { font-size: 17px; }
+  #theme-industrial .theme-workstation-actions { gap: 4px; }
+  #theme-industrial button[data-theme-action] { padding: 8px; font-size: 11px; }
+  #theme-industrial .theme-workstation-directory { position: fixed; z-index: 45; left: 58px; top: 134px; bottom: 66px; width: min(290px,calc(100vw - 70px)); box-shadow: 8px 8px 0 #0005; visibility: hidden; pointer-events: none; }
+  :root[data-interface-index-open='true'] #theme-industrial .theme-workstation-directory { visibility: visible; pointer-events: auto; }
+  #theme-industrial .theme-workstation-footer { grid-column: 2; padding: 0 4px; }
+  #theme-industrial #theme-industrial-channel { display: none; }
+  #theme-industrial [data-deepscord-slot='self'] { width: 100%; }
+  #theme-industrial .topbar { height: 56px; padding-inline: 10px; }
+  #theme-industrial .media-expanded { inset: 126px 0 58px 52px; }
+}
+@media (min-width: 1151px) {
+  :root:has(#app.members-hidden) #theme-industrial { grid-template-columns: 64px 232px minmax(0,1fr); }
+  :root:has(#app.members-hidden) #theme-industrial .theme-workstation-members { display: none; }
+}

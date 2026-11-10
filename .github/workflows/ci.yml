@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Node 24 / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            desktop/package-lock.json
+      - name: Install locked dependencies without native downloads
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install locked desktop type declarations without running native code
+        run: npm --prefix desktop ci --omit=dev --ignore-scripts --no-audit --no-fund
+      - name: Run portable and local server tests
+        run: npm run test:ci
+      - name: Check types against the synchronized desktop sources
+        run: npm run typecheck

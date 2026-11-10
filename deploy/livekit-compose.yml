@@ -1,0 +1,26 @@
+{
+  "services": {
+    "deepscord": {
+      "environment": [
+        "ECHO_SCREEN_MODE=sfu",
+        "ECHO_SCREEN_SFU_URL=${ECHO_SCREEN_SFU_URL:?Set the public wss room-server /screen-sfu URL}",
+        "ECHO_SCREEN_TOKEN_TTL_SECONDS=60",
+        "LIVEKIT_INTERNAL_URL=http://127.0.0.1:7880",
+        "LIVEKIT_API_KEY=${LIVEKIT_API_KEY:?Set a server-only LiveKit API key}",
+        "LIVEKIT_API_SECRET=${LIVEKIT_API_SECRET:?Set a server-only LiveKit API secret}",
+        "LIVEKIT_NODE_IP=${LIVEKIT_NODE_IP:?Set the publicly reachable SFU IP}",
+        "LIVEKIT_UDP_PORT=7882",
+        "LIVEKIT_TCP_PORT=7881"
+      ],
+      "ports": ["7881:7881/tcp", "7882:7882/udp"]
+    },
+    "livekit": {
+      "image": "livekit/livekit-server:v1.13.11",
+      "restart": "unless-stopped",
+      "network_mode": "service:deepscord",
+      "depends_on": ["deepscord"],
+      "command": ["--config", "/etc/livekit.yaml"],
+      "volumes": ["./data/livekit-private.yaml:/etc/livekit.yaml:ro"]
+    }
+  }
+}

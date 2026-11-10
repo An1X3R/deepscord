@@ -1,0 +1,13 @@
+{
+  "format": 1,
+  "id": "constructivist-open",
+  "name": "构成报刊·开放主题",
+  "version": "1.0.0",
+  "kind": "interfaces",
+  "entries": [
+    {
+      "file": "constructivist-open.json",
+      "name": "构成报刊·开放主题"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "id": "default-bomb",
+  "name": "炸弹",
+  "thumbnail": null,
+  "model": "bomb",
+  "trajectory": "arc",
+  "sound": "bomb-1",
+  "durationMs": 1000
+}

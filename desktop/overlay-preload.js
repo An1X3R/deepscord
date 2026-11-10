@@ -1,0 +1,16 @@
+// @ts-check
+'use strict';
+const { contextBridge, ipcRenderer } = require('electron');
+/** @typedef {{voice:import('./desktop-schema.cjs').VoiceOverlay,settings:import('./desktop-schema.cjs').OverlaySettings}} OverlayState */
+contextBridge.exposeInMainWorld('voiceOverlay', {
+  finishAdjustment: () => ipcRenderer.invoke('overlay:adjustment:finish'),
+  /** @param {{width:number,height:number}} bounds */
+  resize: (bounds) => ipcRenderer.invoke('overlay:adjustment:resize', bounds),
+  /** @param {(state:OverlayState)=>void} callback @returns {()=>void} */
+  onState(callback) {
+    /** @param {Electron.IpcRendererEvent} _event @param {OverlayState} state @returns {void} */
+    const listener = (_event, state) => callback(state);
+    ipcRenderer.on('overlay:state', listener);
+    return () => { ipcRenderer.removeListener('overlay:state', listener); };
+  },
+});

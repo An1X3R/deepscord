@@ -1,0 +1,13 @@
+{
+  "sha256": "2b933bfed0e1e9e1924cccfd3df519ac1567bd6f6d55feca2a51999420306d51",
+  "bytes": 2252,
+  "width": 320,
+  "height": 192,
+  "frames": 2,
+  "animated": true,
+  "durationMs": 250,
+  "mime": "image/avif",
+  "sourceGif": "test/avif-codec-fixtures/transparent-animation.gif",
+  "sourceGifSha256": "4f2d6d522298a11900412c23837fdbd6f98ed242e6e89a1ee069ba53df86fb4d",
+  "provenance": "Frozen bytes from an actual production private-picker GIF import using the immutable baseline package. Resource comparisons reuse these bytes; GIF transcoding is covered separately."
+}

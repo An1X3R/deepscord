@@ -1,0 +1,12 @@
+{
+  "name": "deepscord",
+  "productName": "Deepscord",
+  "version": "1.0.0",
+  "description": "Deepscord — 语音频道桌面客户端",
+  "main": "main.js",
+  "author": "Deepscord",
+  "license": "MIT",
+  "dependencies": {
+    "steamworks.js": "0.4.0"
+  }
+}

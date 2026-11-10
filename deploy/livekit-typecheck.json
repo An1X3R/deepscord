@@ -1,0 +1,11 @@
+{
+  "extends": "../tsconfig.network.json",
+  "files": [
+    "../lib/screen-sfu.cjs",
+    "../public/js/screen-sfu.js",
+    "../deploy/livekit-config.cjs",
+    "../deploy/livekit-bundle.cjs",
+    "../deploy/livekit-test.cjs",
+    "../deploy/livekit-test-page.js"
+  ]
+}

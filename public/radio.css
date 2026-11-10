@@ -1,0 +1,19 @@
+.radio-strip { display:flex; align-items:center; gap:12px; min-height:38px; padding:5px 20px; border-bottom:1px solid var(--line); background:var(--bg-side); color:var(--text-2); flex-shrink:0; }
+.radio-strip[hidden] { display:none; }
+.radio-panel [hidden], .radio-strip [hidden], #createRadioFields[hidden] { display:none; }
+.radio-live { color:var(--accent); font-size:19px; }
+.radio-track-viewport { overflow:hidden; flex:1; min-width:0; font-size:12px; }
+#radioTrack { display:inline-block; white-space:nowrap; padding-right:4px; }
+#radioTrack.scrolling { animation:radio-scroll var(--radio-duration) linear 3s infinite alternate; }
+.radio-track-viewport:hover #radioTrack { animation-play-state:paused; }
+.radio-strip .btn { flex-shrink:0; }
+.radio-controls { display:flex; flex-wrap:wrap; gap:8px; }
+.radio-panel .input { width:100%; }
+.msg-author-title { background:var(--accent-soft); color:var(--accent); letter-spacing:0; max-width:16em; overflow:hidden; text-overflow:ellipsis; }
+@keyframes radio-scroll { from { transform:translateX(0); } to { transform:translateX(var(--radio-scroll)); } }
+@media (prefers-reduced-motion:reduce) { #radioTrack.scrolling { animation:none; } .radio-track-viewport { overflow-x:auto; } }
+
+.radio-volume { display:flex; align-items:center; gap:7px; flex-shrink:0; font-size:11px; color:var(--text-2); }
+.radio-volume input { width:80px; accent-color:var(--accent); cursor:pointer; }
+.radio-volume output { width:30px; text-align:right; font-variant-numeric:tabular-nums; }
+@media (max-width:600px) { .radio-volume > span { display:none; } .radio-volume input { width:60px; } }

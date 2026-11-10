@@ -1,0 +1,13 @@
+{
+  "format": 1,
+  "id": "sticker-example",
+  "name": "原创几何图片表情示例",
+  "version": "1.0.0",
+  "kind": "stickers",
+  "entries": [
+    {
+      "file": "original-mark.avif",
+      "name": "几何标记"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+:root[data-custom-density] .voice-stage { background: linear-gradient(115deg, var(--accent-soft), transparent 70%), var(--bg-side); }
+:root[data-custom-density] .tile { background: var(--bg-elev); }
+:root[data-custom-density] .tile.speaking { background: color-mix(in srgb, var(--green) 12%, var(--bg-elev)); }
+:root[data-custom-density] .btn.primary, :root[data-custom-density] .rail-brand { color: var(--accent-ink); }
+:root[data-custom-corners] :is(.tile,.btn,.btn.big,.btn.small,.icon-btn,.input,.modal,.channel-item,.msg-input-wrap,.rail-avatar) { border-radius: var(--radius); }
+:root[data-custom-density='compact'] .voice-stage { padding: 12px 18px; }
+:root[data-custom-density='compact'] .stage-grid { gap: 7px; grid-template-columns: repeat(auto-fit,minmax(160px,210px)); }
+:root[data-custom-density='compact'] .tile { min-height: 145px; padding: 14px 10px 10px; gap: 6px; }
+:root[data-custom-density='compact'] .channel-item { min-height: 32px; padding-block: 5px; }
+:root[data-custom-density='compact'] .msg { padding-block: 4px; }

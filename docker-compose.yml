@@ -1,0 +1,73 @@
+# Set ECHO_DOMAIN to the server hostname, then run docker compose up -d --build.
+# Direct media is the default; optional STUN discovery never enables TURN.
+# For relay: set ECHO_PASSWORD, ECHO_MEDIA_POLICY=relay-allowed (or relay-only),
+# TURN_URL=turn:PUBLIC_IP:3478, and the same strong TURN_SECRET for both services.
+# Start the optional relay with docker compose --profile turn up -d --build.
+# Open 3478/tcp+udp and 49160-49200/udp on the Linux host for TURN.
+services:
+  deepscord:
+    build: .
+    container_name: deepscord
+    restart: unless-stopped
+    environment:
+      - PORT=3000
+      - ECHO_NETWORK_MODE=${ECHO_NETWORK_MODE-server}
+      - ECHO_MEDIA_POLICY=${ECHO_MEDIA_POLICY-direct}
+      - ECHO_SCREEN_MODE=peer-relay
+      - ECHO_PASSWORD
+      - STUN_URLS
+      - STUN_URL
+      - TURN_URL
+      - TURN_SECRET
+      - TURN_TTL_SECONDS
+    volumes:
+      - ./data:/app/data
+    expose:
+      - "3000"
+    networks:
+      - deepscord-net
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: deepscord-caddy
+    restart: unless-stopped
+    depends_on:
+      - deepscord
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      - ECHO_DOMAIN=${ECHO_DOMAIN:-localhost}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      - deepscord-net
+
+  coturn:
+    image: coturn/coturn:4.6-alpine
+    container_name: deepscord-turn
+    restart: unless-stopped
+    profiles: ["turn"]
+    network_mode: host
+    environment:
+      - TURN_SECRET
+      - ECHO_PASSWORD
+    volumes:
+      - ./deploy/coturn.conf:/etc/coturn/turnserver.conf:ro
+    # Validate at runtime so inactive TURN does not require any secrets.
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        : "$${TURN_SECRET:?Set TURN_SECRET to the same secret used by deepscord}"
+        : "$${ECHO_PASSWORD:?Set ECHO_PASSWORD before enabling TURN}"
+        exec turnserver -c /etc/coturn/turnserver.conf --static-auth-secret="$$TURN_SECRET"
+
+volumes:
+  caddy-data:
+  caddy-config:
+
+networks:
+  deepscord-net:

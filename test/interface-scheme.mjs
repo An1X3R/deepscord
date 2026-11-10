@@ -1,0 +1,68 @@
+// @ts-check
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import {createRequire} from 'node:module';
+import {fileURLToPath} from 'node:url';
+import {parseInterfaceScheme,parseInterfaceSelection,parseSchemeValues,resolveInterfaceScheme} from '../public/js/interface-scheme.js';
+
+const bundled=fileURLToPath(new URL('../public/customization/',import.meta.url));
+const scheme=parseInterfaceScheme(JSON.parse(fs.readFileSync(path.join(bundled,'interfaces/industrial.json'),'utf8')));
+const resolved=resolveInterfaceScheme(scheme,{'content-spacing':20,'title-scale':1.2,ignored:'strip'});
+assert.deepEqual(resolved.values,{'content-spacing':20,'title-scale':1.2});
+assert.deepEqual(resolved.variables,{'--scheme-content-spacing':'20px','--scheme-title-scale':'1.2'});
+assert.deepEqual(parseSchemeValues(scheme,{}),{'content-spacing':12,'title-scale':1});
+assert.deepEqual(parseInterfaceSelection({scheme,values:{},ignored:true}),{scheme,values:{'content-spacing':12,'title-scale':1}});
+assert.throws(()=>parseSchemeValues(scheme,{'content-spacing':8.5}),RangeError);
+assert.throws(()=>parseSchemeValues(scheme,{'title-scale':1.45}),RangeError);
+assert.throws(()=>parseSchemeValues(scheme,{'content-spacing':'12'}),RangeError);
+assert.throws(()=>parseInterfaceScheme({...scheme,version:2}),TypeError);
+assert.throws(()=>parseInterfaceScheme({...scheme,options:Array(17).fill(scheme.options[0])}),RangeError);
+assert.throws(()=>parseInterfaceScheme({...scheme,options:[scheme.options[0],scheme.options[0]]}),TypeError);
+assert.throws(()=>parseInterfaceScheme({...scheme,options:[{...scheme.options[0],cssVariable:'--background'}]}),TypeError);
+const toggles=parseInterfaceScheme({...scheme,options:[{id:'marks',label:'Marks',type:'toggle',default:true,on:'1',off:'0',cssVariable:'--scheme-marks'},{id:'weight',label:'Weight',type:'select',default:'bold',cssVariable:'--scheme-weight',choices:[{value:'bold',label:'Bold',cssValue:'700'},{value:'regular',label:'Regular',cssValue:'400'}]}]});
+assert.deepEqual(resolveInterfaceScheme(toggles,{marks:false,weight:'regular'}).variables,{'--scheme-marks':'0','--scheme-weight':'400'});
+assert.throws(()=>parseSchemeValues(toggles,{marks:'false'}),TypeError);
+assert.throws(()=>parseSchemeValues(toggles,{weight:'other'}),TypeError);
+for(const on of ['url(https://example.com)','expression(alert(1))','red;display:none','var(--anything)'])assert.throws(()=>parseInterfaceScheme({...scheme,options:[{...toggles.options[0],on}]}),TypeError);
+
+const require=createRequire(import.meta.url);
+const {createCustomizationStore}=/** @type {typeof import('../desktop/customization-store.cjs')} */(require('../desktop/customization-store.cjs'));
+const directory=fs.mkdtempSync(path.join(os.tmpdir(),'deepscord-interface-scheme-'));
+try{
+  const shipped=path.join(directory,'shipped'),existing=path.join(directory,'existing');
+  fs.cpSync(bundled,shipped,{recursive:true});
+  fs.writeFileSync(path.join(shipped,'interfaces','documentation-example.json'),'{}');
+  fs.mkdirSync(path.join(existing,'customization/interfaces'),{recursive:true});
+  fs.writeFileSync(path.join(existing,'customization/interfaces/industrial.json'),JSON.stringify({...scheme,name:'Existing user scheme'}));
+  const migrated=createCustomizationStore(path.join(existing,'customization'),shipped).listInterfaceSchemes();
+  assert.equal(migrated.schemes.length,4,'Only explicitly shipped templates and open packages may seed, excluding documentation examples');
+  assert.equal(migrated.schemes.find(entry=>entry.id==='industrial')?.name,'Existing user scheme','Initial marker migration must preserve pre-existing user JSON');
+  const store=createCustomizationStore(path.join(directory,'customization'),bundled),initial=store.listInterfaceSchemes();
+  assert.equal(initial.schemes.length,4);
+  for(const id of ['industrial-open','constructivist-open'])fs.unlinkSync(path.join(initial.directory,id+'.json'));
+  assert.equal(initial.directory,path.join(directory,'customization/interfaces'));
+  const filename=path.join(initial.directory,'industrial.json');
+  fs.writeFileSync(filename,JSON.stringify({...scheme,name:'User-owned scheme'}));
+  assert.equal(store.listInterfaceSchemes().schemes.find(entry=>entry.id==='industrial')?.name,'User-owned scheme','Shipped seeding must preserve edited JSON');
+  const guide=path.join(initial.directory,'DEVELOPMENT.md');fs.writeFileSync(guide,'Old guide');store.directory('interfaces');
+  assert.equal(fs.readFileSync(guide,'utf8'),fs.readFileSync(path.join(bundled,'interfaces/DEVELOPMENT.md'),'utf8'),'Shipped guide must refresh');
+  const interactions=store.directory('interactions');assert.equal(fs.readdirSync(interactions).filter(name=>name.endsWith('.json')).length,4);
+  const invalid=path.join(initial.directory,'broken.json');fs.writeFileSync(invalid,'{');assert.throws(()=>store.listInterfaceSchemes(),/broken\.json/);fs.unlinkSync(invalid);
+  fs.writeFileSync(invalid,'x'.repeat(256*1024+1));assert.throws(()=>store.listInterfaceSchemes(),/broken\.json/);fs.unlinkSync(invalid);
+  fs.mkdirSync(invalid);assert.throws(()=>store.listInterfaceSchemes(),/broken\.json/);fs.rmdirSync(invalid);
+  assert.throws(()=>store.directory(/** @type {'interfaces'} */('../outside')),TypeError);
+  fs.unlinkSync(filename);
+  assert.equal(createCustomizationStore(path.join(directory,'customization'),bundled).listInterfaceSchemes().schemes.length,1,'Deleted shipped scheme must remain deleted after reopening the store');
+  fs.unlinkSync(path.join(initial.directory,'constructivist.json'));
+  assert.deepEqual(store.listInterfaceSchemes().schemes,[],'User may remove every scheme');
+  assert.equal(store.directory('interfaces'),initial.directory,'Empty scheme directory remains available to the folder action');
+  assert.deepEqual(createCustomizationStore(path.join(directory,'customization'),bundled).listInterfaceSchemes().schemes,[],'Empty directory must survive a new store instance');
+  fs.unlinkSync(path.join(interactions,'default-bomb.json'));
+  store.directory('interactions');
+  assert.equal(fs.existsSync(path.join(interactions,'default-bomb.json')),false,'Deleted interaction templates must remain deleted');
+  for(let index=0;index<65;index++)fs.writeFileSync(path.join(initial.directory,'extra-'+index+'.json'),'{}');
+  assert.throws(()=>store.listInterfaceSchemes(),/at most 64/);
+  console.log(JSON.stringify({event:'interface-scheme-passed',strictSchema:true,cssInjectionRejected:true,realDiskSeeding:true,userFilesPreserved:true,guideRefresh:true,boundedDirectory:true}));
+}finally{fs.rmSync(directory,{recursive:true,force:true});}

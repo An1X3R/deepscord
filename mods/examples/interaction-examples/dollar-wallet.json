@@ -1,0 +1,132 @@
+{
+  "id": "dollar-wallet",
+  "name": "收点小费",
+  "thumbnail": null,
+  "model": "poop",
+  "trajectory": "linear",
+  "sound": "none",
+  "durationMs": 1900,
+  "scene": {
+    "version": 1,
+    "actors": [
+      {
+        "model": "dollar",
+        "keyframes": [
+          {
+            "at": 0,
+            "anchor": "target",
+            "x": 0,
+            "y": -6,
+            "z": 0,
+            "scale": 1,
+            "rotateX": -12,
+            "rotateY": 0,
+            "rotateZ": -12,
+            "opacity": 1
+          },
+          {
+            "at": 0.2,
+            "anchor": "target",
+            "x": 0,
+            "y": -48,
+            "z": 35,
+            "scale": 1.15,
+            "rotateX": -12,
+            "rotateY": 90,
+            "rotateZ": -15,
+            "opacity": 1
+          },
+          {
+            "at": 0.72,
+            "anchor": "sender",
+            "x": 0,
+            "y": -48,
+            "z": 25,
+            "scale": 0.9,
+            "rotateX": -12,
+            "rotateY": 360,
+            "rotateZ": 8,
+            "opacity": 1
+          },
+          {
+            "at": 0.92,
+            "anchor": "sender",
+            "x": 0,
+            "y": 3,
+            "z": -15,
+            "scale": 0.55,
+            "rotateX": 0,
+            "rotateY": 360,
+            "rotateZ": 0,
+            "opacity": 1
+          },
+          {
+            "at": 1,
+            "anchor": "sender",
+            "x": 0,
+            "y": 12,
+            "z": -30,
+            "scale": 0,
+            "rotateX": 0,
+            "rotateY": 360,
+            "rotateZ": 0,
+            "opacity": 0
+          }
+        ]
+      },
+      {
+        "model": "wallet",
+        "keyframes": [
+          {
+            "at": 0,
+            "anchor": "sender",
+            "x": 0,
+            "y": 14,
+            "z": 0,
+            "scale": 1,
+            "rotateX": -18,
+            "rotateY": -18,
+            "rotateZ": 0,
+            "opacity": 1
+          },
+          {
+            "at": 0.8,
+            "anchor": "sender",
+            "x": 0,
+            "y": 14,
+            "z": 0,
+            "scale": 1,
+            "rotateX": -18,
+            "rotateY": -18,
+            "rotateZ": 0,
+            "opacity": 1
+          },
+          {
+            "at": 0.93,
+            "anchor": "sender",
+            "x": 0,
+            "y": 14,
+            "z": 0,
+            "scale": 1.14,
+            "rotateX": -18,
+            "rotateY": -18,
+            "rotateZ": 0,
+            "opacity": 1
+          },
+          {
+            "at": 1,
+            "anchor": "sender",
+            "x": 0,
+            "y": 14,
+            "z": 0,
+            "scale": 1,
+            "rotateX": -18,
+            "rotateY": -18,
+            "rotateZ": 0,
+            "opacity": 1
+          }
+        ]
+      }
+    ]
+  }
+}

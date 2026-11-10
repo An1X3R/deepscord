@@ -1,0 +1,42 @@
+{
+  "commit": "c5240fc79fe5c2407e10afd35f5505ef6333ea49",
+  "license": "LICENSE",
+  "source": "https://github.com/AOMediaCodec/libavif/blob/c5240fc79fe5c2407e10afd35f5505ef6333ea49/tests/data/README.md",
+  "files": [
+    {
+      "name": "abc_color_irot_alpha_irot.avif",
+      "bytes": 10597,
+      "gitBlob": "e5f8141cfa06ac705f3bcbec89d0e6470788bb6b",
+      "url": "https://cdn.jsdelivr.net/gh/AOMediaCodec/libavif@c5240fc79fe5c2407e10afd35f5505ef6333ea49/tests/data/abc_color_irot_alpha_irot.avif",
+      "sha256": "b371cc88244a873131e4d10ff9363d71ce4f41cf333bd4a491b38d970d9abd3b"
+    },
+    {
+      "name": "clap_irot_imir_non_essential.avif",
+      "bytes": 653,
+      "gitBlob": "bcbe87dd30d567a7e74473ac91f5849f24a7f14c",
+      "url": "https://cdn.jsdelivr.net/gh/AOMediaCodec/libavif@c5240fc79fe5c2407e10afd35f5505ef6333ea49/tests/data/clap_irot_imir_non_essential.avif",
+      "sha256": "33f869fcf2a879913eb394982b8fc03e9a60c25831aa37622ddefa656fd39fc1"
+    },
+    {
+      "name": "paris_icc_exif_xmp.avif",
+      "bytes": 21132,
+      "gitBlob": "c66de3a5ae2a663ce2c08a5ae67166ed4c7db52c",
+      "url": "https://cdn.jsdelivr.net/gh/AOMediaCodec/libavif@c5240fc79fe5c2407e10afd35f5505ef6333ea49/tests/data/paris_icc_exif_xmp.avif",
+      "sha256": "961bc38b61e60b7651fa20efa24269ae2f35e4958822a81c908c9bbf9b3f66e1"
+    },
+    {
+      "name": "colors_hdr_srgb.avif",
+      "bytes": 28030,
+      "gitBlob": "ad596ddd22365d829487a6f9135a981190789bcd",
+      "url": "https://cdn.jsdelivr.net/gh/AOMediaCodec/libavif@c5240fc79fe5c2407e10afd35f5505ef6333ea49/tests/data/colors_hdr_srgb.avif",
+      "sha256": "1aecb78d6d363caae95a5dd198f347ce4b200073ced638647364a2ad04d9707d"
+    },
+    {
+      "name": "seine_hdr_gainmap_small_srgb.avif",
+      "bytes": 102004,
+      "gitBlob": "929f4e4fda01efa4744e25003f6f12aed4d8286c",
+      "url": "https://cdn.jsdelivr.net/gh/AOMediaCodec/libavif@c5240fc79fe5c2407e10afd35f5505ef6333ea49/tests/data/seine_hdr_gainmap_small_srgb.avif",
+      "sha256": "573a67fdd581f6e634da198a819cc92a071539dfb720c5d7dfdf02e4e87a0346"
+    }
+  ]
+}

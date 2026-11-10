@@ -1,0 +1,65 @@
+{
+  "decodedFrames": 12,
+  "width": 320,
+  "height": 180,
+  "stats": {
+    "running": true,
+    "pid": 50788,
+    "heapBytes": 2352272,
+    "cpuTimeSeconds": 0.046875,
+    "sourceBudgetBps": 8000000,
+    "admittedBps": 0,
+    "sessions": [
+      {
+        "id": "preview",
+        "role": "subscribe",
+        "source": "integration-source",
+        "state": "connected",
+        "codec": "video/VP8",
+        "rtpBytes": 2791,
+        "rtpPackets": 12,
+        "wireRtpBytesSent": 2791,
+        "wireRtpBytesReceived": 0,
+        "lastPacketAt": "2026-11-05T10:37:50.3677793Z",
+        "diagnostic": "",
+        "queueBytes": 0,
+        "duplicatePackets": 0,
+        "repairedPackets": 0,
+        "filteredRepairNacks": 0,
+        "outsideRepairWindowPackets": 0,
+        "admission": {
+          "streamBps": 40000000,
+          "subscriberBudgetBps": 0,
+          "sourceBudgetBps": 8000000,
+          "locality": "loopback-preview"
+        }
+      },
+      {
+        "id": "publisher",
+        "role": "publish",
+        "source": "integration-source",
+        "state": "connected",
+        "codec": "video/VP8",
+        "rtpBytes": 10942,
+        "rtpPackets": 44,
+        "wireRtpBytesSent": 0,
+        "wireRtpBytesReceived": 13517,
+        "lastPacketAt": "2026-11-05T10:37:50.3677793Z",
+        "diagnostic": "",
+        "queueBytes": 0,
+        "duplicatePackets": 32,
+        "repairedPackets": 32,
+        "filteredRepairNacks": 0,
+        "outsideRepairWindowPackets": 0,
+        "admission": {
+          "streamBps": 40000000,
+          "subscriberBudgetBps": 0,
+          "sourceBudgetBps": 8000000,
+          "locality": "remote"
+        }
+      }
+    ]
+  },
+  "cascadeClosed": true,
+  "roomRevoked": true
+}

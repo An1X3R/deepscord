@@ -1,0 +1,21 @@
+'use strict';
+// @ts-check
+const fs = require('node:fs');
+const path = require('node:path');
+const crypto = require('node:crypto');
+const root = path.resolve(__dirname, '..');
+const version = '2.23.0';
+const source = path.join(root, 'node_modules', 'livekit-client');
+const destination = path.join(root, 'public', 'vendor');
+const metadata = JSON.parse(fs.readFileSync(path.join(source, 'package.json'), 'utf8'));
+if (metadata.version !== version) throw new Error('Installed LiveKit browser SDK differs from the pinned vendor version');
+fs.mkdirSync(destination, { recursive: true });
+const content = fs.readFileSync(path.join(source, 'dist', 'livekit-client.esm.mjs'), 'utf8').replace(/^\/\/# sourceMappingURL=.*$/m, '');
+fs.writeFileSync(path.join(destination, 'livekit-client.js'), content);
+fs.copyFileSync(path.join(source, 'LICENSE'), path.join(destination, 'livekit-client.LICENSE'));
+fs.writeFileSync(path.join(destination, 'livekit-client.d.ts'), "export * from 'livekit-client';\n");
+fs.writeFileSync(path.join(destination, 'livekit-client.json'), JSON.stringify({ package: 'livekit-client', version, source: `https://www.npmjs.com/package/livekit-client/v/${version}`, sha256: crypto.createHash('sha256').update(content).digest('hex'), license: 'Apache-2.0' }, null, 2) + '\n');
+const worker = fs.readFileSync(path.join(source, 'dist', 'livekit-client.e2ee.worker.mjs'));
+fs.writeFileSync(path.join(destination, 'livekit-e2ee-worker.js'), worker);
+fs.copyFileSync(path.join(source, 'LICENSE'), path.join(destination, 'livekit-e2ee-worker.LICENSE'));
+fs.writeFileSync(path.join(destination, 'livekit-e2ee-worker.json'), JSON.stringify({ package: 'livekit-client', version, source: `https://www.npmjs.com/package/livekit-client/v/${version}`, sha256: crypto.createHash('sha256').update(worker).digest('hex'), license: 'Apache-2.0' }, null, 2) + '\n');

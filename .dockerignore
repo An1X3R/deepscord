@@ -1,0 +1,11 @@
+data
+certs
+node_modules
+.git
+docs
+test
+*.log
+Dockerfile
+docker-compose.yml
+start.bat
+enable-lan.bat

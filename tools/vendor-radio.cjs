@@ -1,0 +1,10 @@
+'use strict';
+const fs = require('node:fs');
+const path = require('node:path');
+const root = path.resolve(__dirname, '..');
+const source = path.join(root, 'node_modules', 'hls.js');
+const target = path.join(root, 'public', 'vendor', 'hls');
+fs.mkdirSync(target, { recursive: true });
+fs.copyFileSync(path.join(source, 'dist', 'hls.min.mjs'), path.join(target, 'hls.mjs'));
+fs.copyFileSync(path.join(source, 'dist', 'hls.d.ts'), path.join(target, 'hls.d.mts'));
+fs.copyFileSync(path.join(source, 'LICENSE'), path.join(target, 'LICENSE'));

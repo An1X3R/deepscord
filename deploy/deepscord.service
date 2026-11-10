@@ -1,0 +1,37 @@
+# Deepscord · systemd 服务（不用 Docker 时）
+#
+# 安装：
+#   sudo cp -r deepscord /opt/deepscord
+#   sudo useradd -r -s /usr/sbin/nologin deepscord
+#   sudo chown -R deepscord:deepscord /opt/deepscord
+#   sudo cp /opt/deepscord/deploy/deepscord.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now echo
+#   sudo systemctl status echo
+#
+# 然后按 deploy/nginx.conf 配反向代理 + HTTPS。
+
+[Unit]
+Description=Deepscord voice server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=deepscord
+Group=deepscord
+WorkingDirectory=/opt/deepscord
+ExecStart=/usr/bin/node server.js
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Restart=always
+RestartSec=3
+# 资源限制（按机器调整；语音是 P2P，服务端很轻）
+LimitNOFILE=65535
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/deepscord/data
+
+[Install]
+WantedBy=multi-user.target

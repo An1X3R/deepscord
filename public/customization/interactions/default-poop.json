@@ -1,0 +1,9 @@
+{
+  "id": "default-poop",
+  "name": "便便",
+  "thumbnail": null,
+  "model": "poop",
+  "trajectory": "linear",
+  "sound": "poop",
+  "durationMs": 650
+}

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'" />
+  <title>Deepscord · 工作区</title>
+  <link rel="stylesheet" href="workspace.css" />
+</head>
+<body>
+  <div class="workspace">
+    <nav class="workspace-rail" aria-label="服务器导航">
+      <button class="workspace-brand" id="workspaceHomeBtn" aria-label="工作区" title="工作区">D</button>
+      <div class="rail-rule"></div>
+      <div class="workspace-rail-list" id="savedRoomRail"></div>
+      <button class="workspace-add" id="workspaceAddBtn" aria-label="创建或加入服务器" title="创建或加入服务器">+</button>
+      <span class="rail-local" title="本地工作区">本地</span>
+    </nav>
+    <aside class="workspace-sidebar">
+      <header class="sidebar-head"><h1>Deepscord</h1><span>工作区</span></header>
+      <div class="sidebar-label">已保存的服务器 <span id="savedRoomCount">—</span></div>
+      <div class="saved-room-list" id="savedRoomList"></div>
+      <div class="sidebar-foot">频道记录保存在本机。连接状态由实际房间确认。</div>
+    </aside>
+    <main class="workspace-main">
+      <header class="workspace-topbar"><span id="workspaceBreadcrumb">本地工作区</span><button class="button quiet" id="refreshWorkspaceBtn">刷新记录</button></header>
+      <div class="workspace-scroll">
+        <div class="error-panel" id="workspaceError" role="alert" hidden></div>
+        <p class="loading" id="workspaceLoading" role="status">正在读取本地记录…</p>
+        <section class="welcome-state" id="workspaceEmpty" hidden>
+          <span class="eyebrow">YOUR WORKSPACE</span>
+          <h2>朋友和频道，从这里继续。</h2>
+          <p>创建一个房间，或用朋友的邀请加入。保存的服务器会留在左侧，下次启动直接回来。</p>
+          <div class="actions"><button class="button primary" id="emptyCreateBtn">创建服务器</button><button class="button" id="emptyJoinBtn">加入服务器</button></div>
+          <p class="subtle">支持 Steam、独立直连和独立自建服务。</p>
+        </section>
+        <section id="savedRoomDetail" hidden aria-labelledby="savedRoomTitle">
+          <div class="detail-heading"><div><span class="eyebrow" id="savedRoomMode"></span><h2 id="savedRoomTitle"></h2><p class="subtle" id="savedRoomUpdated"></p></div><span class="offline-badge">离线频道记录</span></div>
+          <div class="actions"><button class="button primary" id="connectSavedRoomBtn">连接服务器</button><button class="button" id="reopenSavedRoomBtn" hidden>重新开房</button><button class="button quiet danger" id="removeSavedRoomBtn">移除本地记录</button></div>
+          <p class="notice" id="savedRoomConflicts" hidden></p>
+          <div class="channel-outline" id="savedChannelOutline"></div>
+        </section>
+      </div>
+      <footer class="workspace-status" id="workspaceStatus" role="status">本地记录不会自动启动房间或麦克风。</footer>
+    </main>
+  </div>
+  <script type="module" src="workspace.js"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+# Deepscord · Caddy 反向代理（自动申请 Let's Encrypt 证书）
+# ECHO_DOMAIN 由 docker-compose 注入；不填时回落到 localhost（本机调试）
+
+{$ECHO_DOMAIN:localhost} {
+	encode zstd gzip
+
+	# WebSocket 由 Caddy 自动升级，无需额外配置
+	reverse_proxy deepscord:3000
+
+	# 调试时看日志：
+	# log {
+	# 	output stdout
+	# 	format console
+	# }
+}

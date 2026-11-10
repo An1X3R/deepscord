@@ -1,0 +1,7 @@
+{
+  "package": "livekit-client",
+  "version": "2.23.0",
+  "source": "https://www.npmjs.com/package/livekit-client/v/2.23.0",
+  "sha256": "053820ce316a0d9881e54d4745eeb45b96575c05d3591a214f318168336e1367",
+  "license": "Apache-2.0"
+}

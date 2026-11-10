@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "id": "constructivist-open",
+  "name": "构成报刊·开放主题",
+  "description": "完整的本地布局、样式与隔离脚本。横向刊头、阶梯目录、纸墨阅读面与机械入场。",
+  "theme": {
+    "accent": "#dc5148",
+    "background": "slate",
+    "density": "compact",
+    "corners": "square"
+  },
+  "interfaceProfile": {
+    "version": 1,
+    "preset": "constructivist",
+    "motion": "full",
+    "navigation": "index",
+    "memberPanel": "compact"
+  },
+  "options": [
+    {
+      "id": "content-spacing",
+      "label": "内容间距",
+      "type": "range",
+      "default": 16,
+      "min": 8,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "cssVariable": "--scheme-content-spacing"
+    },
+    {
+      "id": "title-scale",
+      "label": "标题比例",
+      "type": "range",
+      "default": 1.15,
+      "min": 0.8,
+      "max": 1.4,
+      "step": 0.05,
+      "unit": "",
+      "cssVariable": "--scheme-title-scale"
+    }
+  ],
+  "files": {
+    "html": "packages/constructivist/layout.html",
+    "css": "packages/constructivist/style.css",
+    "script": "packages/constructivist/script.js"
+  }
+}

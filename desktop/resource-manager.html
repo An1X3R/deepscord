@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>资源管理 · Deepscord</title>
+  <link rel="stylesheet" href="app-server/public/app.css">
+  <link rel="stylesheet" href="resource-manager.css">
+</head>
+<body>
+  <main id="rm-main" aria-busy="true">
+    <header class="rm-header">
+      <span class="rm-eyebrow">DEEPSCORD / LOCAL RESOURCES</span>
+      <h1>资源管理</h1>
+      <p>界面主题、互动表情与个人表情，都在本机统一管理。</p>
+    </header>
+    <section class="rm-toolbar" aria-label="资源操作">
+      <button id="rm-install-archive" class="btn primary" type="button" disabled>安装 ZIP 包</button>
+      <button id="rm-install-directory" class="btn" type="button" disabled>安装文件夹</button>
+      <button id="rm-open-root" class="btn ghost" type="button" disabled>打开资源目录</button>
+      <button id="rm-refresh" class="btn ghost" type="button" disabled>刷新</button>
+    </section>
+    <p class="rm-hint">重新安装相同 ID 的资源包会更新已有内容。安装互动包仅加入本机目录，绑定当前服务器后仍需在互动管理中发布。</p>
+    <p id="rm-status" role="status" aria-live="polite">正在读取本机资源…</p>
+    <section id="rm-content" hidden>
+      <dl class="rm-location">
+        <div><dt>资源目录</dt><dd id="rm-root"></dd></div>
+        <div><dt>当前服务器</dt><dd id="rm-server"></dd></div>
+      </dl>
+      <section aria-labelledby="rm-packs-heading">
+        <div class="rm-section-title"><h2 id="rm-packs-heading">已安装资源包</h2><span id="rm-pack-count"></span></div>
+        <div id="rm-pack-list"></div>
+      </section>
+      <section class="rm-personal" aria-labelledby="rm-personal-heading">
+        <h2 id="rm-personal-heading">个人表情库</h2>
+        <p id="rm-personal-summary"></p>
+        <p id="rm-personal-directory" class="rm-path"></p>
+        <p class="rm-hint">在聊天表情面板中收藏、选择和移除个人表情。</p>
+      </section>
+    </section>
+  </main>
+  <script type="module" src="resource-manager.js"></script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+{
+  "id": "playful-fist",
+  "name": "轻轻捶你",
+  "thumbnail": null,
+  "model": "poop",
+  "trajectory": "linear",
+  "sound": "none",
+  "durationMs": 1400,
+  "scene": {
+    "version": 1,
+    "actors": [
+      {
+        "model": "fist",
+        "keyframes": [
+          {
+            "at": 0,
+            "anchor": "target",
+            "x": 24,
+            "y": -5,
+            "z": 0,
+            "scale": 0.8,
+            "rotateX": 0,
+            "rotateY": 0,
+            "rotateZ": -20,
+            "opacity": 1
+          },
+          {
+            "at": 0.18,
+            "anchor": "target",
+            "x": 0,
+            "y": 0,
+            "z": 30,
+            "scale": 1.15,
+            "rotateX": 0,
+            "rotateY": 0,
+            "rotateZ": 0,
+            "opacity": 1
+          },
+          {
+            "at": 0.34,
+            "anchor": "target",
+            "x": 24,
+            "y": -5,
+            "z": 0,
+            "scale": 0.8,
+            "rotateX": 0,
+            "rotateY": 0,
+            "rotateZ": -20,
+            "opacity": 1
+          },
+          {
+            "at": 0.5,
+            "anchor": "target",
+            "x": 0,
+            "y": 0,
+            "z": 30,
+            "scale": 1.15,
+            "rotateX": 0,
+            "rotateY": 0,
+            "rotateZ": 0,
+            "opacity": 1
+          },
+          {
+            "at": 0.66,
+            "anchor": "target",
+            "x": 24,
+            "y": -5,
+            "z": 0,
+            "scale": 0.8,
+            "rotateX": 0,
+            "rotateY": 0,
+            "rotateZ": -20,
+            "opacity": 1
+          },
+          {
+            "at": 0.82,
+            "anchor": "target",
+            "x": 0,
+            "y": 0,
+            "z": 30,
+            "scale": 1.15,
+            "rotateX": 0,
+            "rotateY": 0,
+            "rotateZ": 0,
+            "opacity": 1
+          },
+          {
+            "at": 1,
+            "anchor": "target",
+            "x": 0,
+            "y": 0,
+            "z": 0,
+            "scale": 1,
+            "rotateX": 0,
+            "rotateY": 0,
+            "rotateZ": 0,
+            "opacity": 1
+          }
+        ]
+      }
+    ]
+  }
+}

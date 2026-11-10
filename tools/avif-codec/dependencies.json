@@ -1,0 +1,17 @@
+{
+  "emscripten": {
+    "version": "6.0.12",
+    "release": "6e9f6885cb17a3d6c8fd488a5cff730f50aba61d",
+    "url": "https://storage.googleapis.com/webassembly/emscripten-releases-builds/win/6e9f6885cb17a3d6c8fd488a5cff730f50aba61d/wasm-binaries.zip",
+    "filename": "sdk-6.0.12.zip",
+    "bytes": 700727317,
+    "sha256": "51ac2e51a2c6eeba09fa04418496750662b5c1f022665814b0ee8f557c8328c9"
+  },
+  "libaom": {
+    "version": "3.15.2",
+    "url": "https://storage.googleapis.com/aom-releases/libaom-3.15.2.tar.gz",
+    "filename": "libaom-3.15.2.tar.gz",
+    "bytes": 6629974,
+    "sha256": "67bb54b245f33ed98600e08269e6139986e48114e14042474ddd8885801dfddc"
+  }
+}

@@ -1,0 +1,68 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import net from 'node:net';
+import { spawn } from 'node:child_process';
+import { once } from 'node:events';
+import { randomUUID } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
+import { connectPage, waitForPort } from '../test/cdp.mjs';
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const source = process.env.ELECTRON_TEST_BINARY;
+assert(source, 'ELECTRON_TEST_BINARY must identify the real Electron executable');
+const directory = fs.mkdtempSync(path.join(root, '.qa-tools', 'production-desktop-'));
+const runtime = path.join(directory, 'runtime');
+const sourceApp = path.join(path.dirname(source), 'resources', 'app');
+fs.cpSync(path.dirname(source), runtime, { recursive:true,filter:(entry) => entry !== sourceApp && !entry.startsWith(sourceApp + path.sep) && entry !== path.join(path.dirname(source), 'resources', 'app.asar') });
+const runtimeApp = path.join(runtime, 'resources', 'app');
+fs.mkdirSync(runtimeApp, { recursive:true });
+fs.writeFileSync(path.join(runtimeApp, 'package.json'), JSON.stringify({ name:'deepscord-production-probe',version:'1.0.0',main:'main.cjs' }));
+fs.writeFileSync(path.join(runtimeApp, 'main.cjs'), `require(${JSON.stringify(path.join(root, 'desktop', 'main.js'))});`);
+const listener = net.createServer();
+listener.listen(0, '127.0.0.1');
+await once(listener, 'listening');
+const address = listener.address();
+assert(address && typeof address !== 'string');
+const port = address.port;
+listener.close();
+await once(listener, 'close');
+const userData = path.join(directory, 'user-data');
+/** @type {NodeJS.ProcessEnv} */
+const environment = { ...process.env,DEEPSCORD_USER_DATA:userData };
+delete environment.ELECTRON_RUN_AS_NODE;
+const log = fs.openSync(path.join(directory, 'native.log'), 'w');
+const child = spawn(path.join(runtime, path.basename(source)), [`--remote-debugging-port=${port}`,'--remote-debugging-address=127.0.0.1'], { env:environment,windowsHide:true,stdio:['ignore',log,log] });
+const exited = once(child, 'exit');
+let page = null;
+const timer = setTimeout(() => child.kill(), 25000);
+try {
+  await waitForPort(port, 12000);
+  page = await connectPage(port, 'file:');
+  await page.waitFor('typeof window.deepscord?.getDesktopSettings === "function"', { timeout:10000,interval:50,label:'production desktop preload' });
+  const profile = { id:randomUUID(),name:'Native probe',color:'#7ccfbd',avatar:null };
+  assert.equal(await page.eval('window.deepscord.getProfile()', { awaitPromise:true,userGesture:false }), null);
+  const savedProfile = await page.eval(`window.deepscord.saveProfile(${JSON.stringify(profile)})`, { awaitPromise:true,userGesture:false });
+  assert.deepEqual(savedProfile, profile);
+  assert.deepEqual(await page.eval('window.deepscord.getProfile()', { awaitPromise:true,userGesture:false }), profile);
+  const settings = await page.eval('window.deepscord.getDesktopSettings()', { awaitPromise:true,userGesture:false });
+  assert.equal(settings.muteShortcut, 'Control+Shift+M');
+  const next = { ...settings,overlay:{ ...settings.overlay,width:310,scale:1.1 } };
+  assert.deepEqual(await page.eval(`window.deepscord.setDesktopSettings(${JSON.stringify(next)})`, { awaitPromise:true,userGesture:false }), next);
+  assert.deepEqual(await page.eval('window.deepscord.getDesktopSettings()', { awaitPromise:true,userGesture:false }), next);
+  const denied = await page.eval('window.deepscord.listAudioProcesses().then(() => "allowed", error => error.message)', { awaitPromise:true,userGesture:false });
+  assert.match(denied, /connected room/);
+  assert(!denied.includes('No handler registered'));
+  assert.deepEqual(JSON.parse(fs.readFileSync(path.join(userData, 'profile.json'), 'utf8')), profile);
+  console.log('Production desktop smoke passed: full main.js startup, real preload/IPCs, profile roundtrip/disk persistence, settings roundtrip, capture IPC registration and bootstrap denial; no screen/microphone capture.');
+  page.send('Runtime.evaluate', { expression:'window.deepscord.quit()',userGesture:false }).catch((error) => console.log('quit_response_closed', { message:error.message }));
+  const [code] = await exited;
+  assert.equal(code, 0);
+  console.log('Production desktop clean quit passed. Diagnostics:', directory);
+} finally {
+  clearTimeout(timer);
+  if (page) page.close();
+  if (child.exitCode === null) child.kill();
+  await exited;
+  fs.closeSync(log);
+}

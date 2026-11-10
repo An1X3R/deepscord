@@ -1,0 +1,597 @@
+/* Local interface profiles preserve the communication DOM and signed room theme. */
+:root[data-interface-preset] { --interface-accent: var(--accent); --interface-rail: 64px; --interface-sidebar: 244px; --interface-member: 224px; }
+:root[data-interface-members='compact'] { --interface-member: 176px; }
+:root[data-interface-preset] .app { min-width: 0; grid-template-columns: var(--interface-rail) var(--interface-sidebar) minmax(0,1fr) var(--interface-member); }
+:root[data-interface-preset] .app.members-hidden { grid-template-columns: var(--interface-rail) var(--interface-sidebar) minmax(0,1fr); }
+:root[data-interface-preset] :is(.main,.sidebar,.members,.topbar-left) { min-width: 0; }
+:root[data-interface-preset] .sidebar { display: flex; }
+:root[data-interface-preset] .members { background: var(--bg-side); }
+:root[data-interface-preset] :is(.btn,.icon-btn,.channel,.composer,.self-panel,.rail-avatar,.tile,.input,.modal,.send-btn,.interface-index-button) { border-radius: var(--radius); }
+:root[data-interface-preset] .rail-brand { background: var(--interface-accent); color: var(--accent-ink); border-radius: 0; }
+:root[data-interface-preset] .channel.active { border-left: 3px solid var(--interface-accent); }
+:root[data-interface-preset] .channel { min-height: 38px; border-left: 3px solid transparent; }
+:root[data-interface-preset] .sidebar-head { border-bottom: 1px solid var(--line-2); }
+:root[data-interface-preset] .topbar { border-bottom: 1px solid var(--line-2); }
+:root[data-interface-preset] .media-expanded { left: calc(var(--interface-rail) + var(--interface-sidebar)); }
+:root[data-interface-members='compact'] .members-scroll { padding-inline: 10px; }
+:root[data-interface-members='compact'] .member { gap: 7px; padding-inline: 5px; }
+:root[data-interface-members='compact'] .member .avatar { --av-size: 28px !important; }
+:root[data-interface-members='compact'] .member-sub { display: none; }
+.interface-index-button { flex: none; min-height: 36px; padding: 7px 13px; border: 1.5px solid var(--line-2); border-left: 5px solid var(--interface-accent); background: var(--bg-elev); color: var(--text); font: inherit; font-size: 12px; font-weight: 800; letter-spacing: .05em; cursor: pointer; }
+.interface-index-button[hidden] { display: none; }
+.interface-index-button[aria-expanded='true'] { background: var(--interface-accent); color: var(--bg-rail); }
+
+/* Preset I: Industrial Workstation */
+:root[data-interface-preset='industrial'] { --text: #e3efea; --text-2: #a9bbb4; --text-3: #93a69d; --line: #b5d5c21a; --line-2: #b5d5c233; --hover: #9ad9c709; --hover-2: #9ad9c716; }
+:root[data-interface-preset='industrial'] .rail { border-right: 1px solid var(--line-2); }
+:root[data-interface-preset='industrial'] .topbar { height: 64px; }
+:root[data-interface-preset='industrial'] .topbar-name { font-weight: 650; letter-spacing: .04em; }
+:root[data-interface-preset='industrial'] .topbar-icon { color: var(--interface-accent); }
+:root[data-interface-preset='industrial'] .voice-stage { background: var(--bg-side); border-left: 2px solid var(--interface-accent); }
+:root[data-interface-preset='industrial'] .stage-head { padding-bottom: 12px; border-bottom: 1px solid var(--line-2); }
+:root[data-interface-preset='industrial'] .stage-title { font-size: 21px; }
+:root[data-interface-preset='industrial'] .channel.active { background: var(--accent-soft); color: var(--text); }
+:root[data-interface-preset='industrial'] .channel-group-label { letter-spacing: .08em; }
+:root[data-interface-preset='industrial'] .composer { border-top: 1px solid var(--line-2); }
+:root[data-interface-preset='industrial'] .tile.speaking { box-shadow: inset 3px 0 var(--green); }
+
+/* ============================================================================
+   Preset II: Constructivist Index — 《为声音 · 凸版画册》 (For the Voice 1923)
+   Orthogonal heavy lead-type rules, Die-cut Thumb-Index tabs, Popova chevrons.
+   ============================================================================ */
+:root[data-interface-preset='constructivist'] {
+  color-scheme: light;
+  --bg: #f1ede4 !important;
+  --bg-side: #e7e1d4 !important;
+  --bg-rail: #171716 !important;
+  --bg-elev: #f9f5ec !important;
+  --bg-elev2: #d8d3c8 !important;
+  --bg-input: #f9f5ec !important;
+  --text: #20201f;
+  --text-2: #514c43;
+  --text-3: #66635c;
+  --accent: #b5322a !important;
+  --accent-2: #8f2822 !important;
+  --accent-ink: #fff8ef !important;
+  --accent-soft: #b5322a14 !important;
+  --accent-glow: transparent !important;
+  --accent-border: #b5322a59 !important;
+  --interface-accent: #b5322a;
+  --line: #20201f26;
+  --line-2: #20201f66;
+  --hover: #20201f0a;
+  --hover-2: #20201f14;
+  --green: #27674b;
+  --green-soft: #27674b18;
+  --danger: #a32229;
+  --danger-text: #a32229;
+  --danger-soft: #a3222916;
+  --warn: #d9822b;
+  --shadow-lg: 8px 8px 0 #20201f45;
+  --radius: 0px !important;
+  --constructivist-grid-svg: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 64 64'><path d='M64 0H0v64' fill='none' stroke='%2320201f' stroke-width='0.6' stroke-opacity='0.09'/><path d='M8 4v8M4 8h8' stroke='%23b5322a' stroke-width='1' stroke-opacity='0.22'/></svg>");
+  --popova-chevron-svg: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='32' height='6' viewBox='0 0 32 6'><polygon points='0,6 8,0 16,6' fill='%23b5322a'/><polygon points='16,6 24,0 32,6' fill='%2320201f'/></svg>");
+}
+
+/* Top Domain Rail & Photomontage Cutout Mounts for Domain Icons */
+:root[data-interface-preset='constructivist'] :is(.rail,.rail-settings,.rail-add) { color: #f1ede4; }
+:root[data-interface-preset='constructivist'] .rail {
+  background: #171716;
+  border-bottom: 4px solid #b5322a;
+  box-shadow: inset 0 -1px 0 #f1ede422;
+}
+:root[data-interface-preset='constructivist'] .rail-brand {
+  background: #b5322a;
+  color: #fff8ef;
+  border: 2px solid #f1ede4;
+  box-shadow: 3px 3px 0 #000;
+}
+:root[data-interface-preset='constructivist'] .rail-divider { background: #b5322a; opacity: 0.85; }
+:root[data-interface-preset='constructivist'] .rail-item .rail-icon {
+  border-radius: 0;
+  border: 2px solid #f1ede4;
+  box-shadow: 3px 3px 0 #000;
+}
+:root[data-interface-preset='constructivist'] .rail-item.active .rail-icon {
+  border-color: #fff8ef;
+  box-shadow: 0 0 0 2px #b5322a, 4px 4px 0 #b5322a;
+  transform: translateY(-1px);
+}
+:root[data-interface-preset='constructivist'] :is(.rail-add,.rail-settings) {
+  background: #262624;
+  border: 1.5px solid #f1ede455;
+  border-radius: 0;
+}
+:root[data-interface-preset='constructivist'] :is(.rail-add:hover,.rail-settings:hover) {
+  background: #b5322a;
+  border-color: #fff8ef;
+  color: #fff8ef;
+}
+
+/* For the Voice (1923) Die-Cut Thumb-Index Drawer */
+:root[data-interface-preset='constructivist'] .interface-index-button {
+  border: 2px solid #20201f;
+  border-left: 7px solid #b5322a;
+  background: #f9f5ec;
+  color: #20201f;
+  box-shadow: 3px 3px 0 #20201f;
+  text-transform: uppercase;
+}
+:root[data-interface-preset='constructivist'] .interface-index-button:hover {
+  background: #e7e1d4;
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 #b5322a;
+}
+:root[data-interface-preset='constructivist'] .interface-index-button[aria-expanded='true'] {
+  background: #b5322a;
+  color: #fff8ef;
+  border-color: #20201f;
+  box-shadow: 3px 3px 0 #20201f;
+}
+:root[data-interface-preset='constructivist'] .sidebar {
+  border: 3px solid #20201f;
+  border-top: 8px solid #b5322a;
+  background: #e7e1d4;
+  background-image: var(--constructivist-grid-svg);
+}
+:root[data-interface-preset='constructivist'] .sidebar-head {
+  height: 74px;
+  padding: 10px 14px;
+  background: #20201f;
+  color: #f1ede4;
+  border-bottom: 4px solid #b5322a;
+}
+:root[data-interface-preset='constructivist'] .sidebar-head :is(h1,.ghost-icon) { color: #f1ede4; }
+:root[data-interface-preset='constructivist'] .sidebar-head h1 { font-weight: 900; letter-spacing: .02em; }
+:root[data-interface-preset='constructivist'] .sidebar-head .server-hierarchy > span {
+  color: #e09f3e;
+  font-family: ui-monospace, Consolas, monospace;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+:root[data-interface-preset='constructivist'] .group-head {
+  margin-top: 6px;
+  padding: 5px 8px;
+  color: #20201f;
+  font-weight: 900;
+  letter-spacing: .12em;
+  border-bottom: 2px solid #20201f;
+}
+:root[data-interface-preset='constructivist'] .channel-scroll {
+  padding: 14px 12px 20px 8px;
+  counter-reset: channel-index;
+}
+:root[data-interface-preset='constructivist'] .channel {
+  counter-increment: channel-index;
+  min-height: 44px;
+  margin: 5px 0;
+  padding: 6px 10px 6px 8px;
+  border-radius: 0;
+  background: #f9f5ec;
+  border: 1.5px solid #20201f;
+  border-left: 6px solid #20201f;
+  box-shadow: 3px 3px 0 #20201f24;
+  color: #20201f;
+  font-weight: 700;
+  text-align: left;
+  transition: transform 90ms steps(3, end), background-color 90ms linear, box-shadow 90ms linear;
+}
+:root[data-interface-preset='constructivist'] .channel::before {
+  content: counter(channel-index, decimal-leading-zero);
+  display: inline-grid;
+  place-items: center;
+  min-width: 26px;
+  height: 22px;
+  margin-right: 4px;
+  padding-right: 6px;
+  border-right: 1.5px solid #20201f44;
+  font: 900 11px/1 ui-monospace, Consolas, monospace;
+  color: #b5322a;
+}
+:root[data-interface-preset='constructivist'] .channel:nth-child(3n + 2) {
+  margin-left: 6px;
+  width: calc(100% - 6px);
+  border-left-color: #b5322a;
+}
+:root[data-interface-preset='constructivist'] .channel:nth-child(3n) {
+  margin-left: 12px;
+  width: calc(100% - 12px);
+}
+:root[data-interface-preset='constructivist'] .channel:hover {
+  background: #fff8ef;
+  border-color: #20201f;
+  box-shadow: 4px 4px 0 #b5322a;
+  transform: translateX(2px);
+}
+:root[data-interface-preset='constructivist'] .channel.active {
+  color: #fff8ef;
+  background: #b5322a;
+  border-color: #20201f;
+  border-left: 8px solid #20201f;
+  box-shadow: 4px 4px 0 #20201f;
+}
+:root[data-interface-preset='constructivist'] .channel.active :is(.ch-count,.ch-icon),
+:root[data-interface-preset='constructivist'] .channel.active::before {
+  color: #fff8ef;
+  border-right-color: #fff8ef55;
+}
+:root[data-interface-preset='constructivist'] .ch-members {
+  margin: 4px 0 8px 14px;
+  padding-left: 10px;
+  border-left: 2px solid #20201f;
+}
+:root[data-interface-preset='constructivist'] .ch-member {
+  border-radius: 0;
+  color: #20201f;
+  font-weight: 600;
+}
+
+/* Letterpress Editorial Topbar & Popova Chevron Border */
+:root[data-interface-preset='constructivist'] .topbar {
+  position: relative;
+  height: 82px;
+  padding: 12px 24px 16px;
+  background: #f1ede4;
+  background-image: var(--popova-chevron-svg);
+  background-repeat: repeat-x;
+  background-position: left bottom;
+  border-bottom: 4px solid #20201f;
+  backdrop-filter: none;
+}
+:root[data-interface-preset='constructivist'] .topbar-left { gap: 12px; }
+:root[data-interface-preset='constructivist'] .topbar-name {
+  position: relative;
+  isolation: isolate;
+  padding: 5px 16px 5px 11px;
+  font-size: clamp(20px, 2.4vw, 31px);
+  font-weight: 900;
+  letter-spacing: -.04em;
+  color: #fff8ef;
+  max-width: 42vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-shadow: 4px 4px 0 #20201f;
+}
+:root[data-interface-preset='constructivist'] .topbar-name::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: #b5322a;
+  border: 2px solid #20201f;
+  clip-path: polygon(0 8%, 100% 0, 97% 100%, 0 100%);
+}
+:root[data-interface-preset='constructivist'] .topbar-icon {
+  width: 34px;
+  height: 34px;
+  background: #20201f;
+  color: #fff8ef;
+  border: 2px solid #20201f;
+  box-shadow: 2px 2px 0 #b5322a;
+}
+:root[data-interface-preset='constructivist'] .topbar-desc { display: none; }
+:root[data-interface-preset='constructivist'] .conn-pill {
+  border-radius: 0;
+  border: 1.5px solid #20201f;
+  background: #f9f5ec;
+  color: #20201f;
+  font-family: ui-monospace, Consolas, monospace;
+  font-weight: 700;
+  box-shadow: 2px 2px 0 #20201f22;
+}
+
+/* Radio Strip — Campfire Warmth (#D9822B) on Dark Film Strip */
+:root[data-interface-preset='constructivist'] .radio-strip {
+  min-height: 40px;
+  padding: 6px 24px;
+  background: #20201f;
+  color: #f1ede4;
+  border-bottom: 3px solid #b5322a;
+}
+:root[data-interface-preset='constructivist'] .radio-live {
+  color: #d9822b;
+  font-weight: 900;
+}
+:root[data-interface-preset='constructivist'] .radio-volume { color: #d8d3c8; font-weight: 700; }
+:root[data-interface-preset='constructivist'] .radio-volume input { accent-color: #d9822b; }
+:root[data-interface-preset='constructivist'] .radio-strip .btn {
+  background: #2a2b2d;
+  color: #f1ede4;
+  border: 1px solid #f1ede455;
+  border-radius: 0;
+}
+:root[data-interface-preset='constructivist'] .radio-strip .btn:hover {
+  background: #b5322a;
+  border-color: #fff8ef;
+  color: #fff8ef;
+}
+
+/* Voice Stage — Architectural Print Grid & Cutout Poster Tiles */
+:root[data-interface-preset='constructivist'] .voice-stage {
+  background-color: #e7e1d4;
+  background-image: var(--constructivist-grid-svg);
+  border-bottom: 5px solid #20201f;
+  padding: 20px 24px 16px;
+}
+:root[data-interface-preset='constructivist'] .content:has(.chat[hidden]) .voice-stage {
+  flex: 1;
+  max-height: none;
+  border-bottom: 0;
+}
+:root[data-interface-preset='constructivist'] .stage-head {
+  border-left: 8px solid #b5322a;
+  border-bottom: 2px solid #20201f;
+  padding: 4px 0 10px 14px;
+  margin-bottom: 16px;
+  background: linear-gradient(90deg, #b5322a12, transparent 65%);
+}
+:root[data-interface-preset='constructivist'] .stage-title {
+  font-size: 26px;
+  font-weight: 900;
+  letter-spacing: -.03em;
+  color: #20201f;
+  text-transform: uppercase;
+}
+:root[data-interface-preset='constructivist'] .stage-sub {
+  padding: 3px 9px;
+  background: #20201f;
+  color: #f1ede4;
+  font: 700 11px/1.4 ui-monospace, Consolas, monospace;
+  letter-spacing: .06em;
+}
+:root[data-interface-preset='constructivist'] .live-dot {
+  width: 9px;
+  height: 9px;
+  background: #b5322a;
+  border-radius: 0;
+  transform: rotate(45deg);
+}
+:root[data-interface-preset='constructivist'] .tile {
+  border: 2px solid #20201f;
+  border-top: 6px solid #20201f;
+  background: #f9f5ec;
+  border-radius: 0;
+  box-shadow: 5px 5px 0 #20201f28;
+  padding: 20px 14px 14px;
+}
+:root[data-interface-preset='constructivist'] .tile::before {
+  content: '№';
+  position: absolute;
+  top: 5px;
+  left: 8px;
+  font: 900 10px/1 ui-monospace, Consolas, monospace;
+  color: #b5322a;
+  letter-spacing: .05em;
+}
+:root[data-interface-preset='constructivist'] .tile .avatar,
+:root[data-interface-preset='constructivist'] .msg-avatar,
+:root[data-interface-preset='constructivist'] .member-avatar .avatar,
+:root[data-interface-preset='constructivist'] .self-panel .avatar {
+  box-shadow: 0 0 0 2px #f9f5ec, 0 0 0 4px #20201f, 3px 3px 0 3px #b5322a;
+}
+:root[data-interface-preset='constructivist'] .tile.speaking {
+  background: #edf1e7;
+  border-color: #20201f;
+  border-top-color: #27674b;
+  box-shadow: inset 6px 0 #27674b, 6px 6px 0 #20201f;
+}
+:root[data-interface-preset='constructivist'] .tile.speaking .avatar {
+  box-shadow: 0 0 0 2px #edf1e7, 0 0 0 4px #27674b, 3px 3px 0 3px #20201f;
+}
+:root[data-interface-preset='constructivist'] .tile.speaking .tile-name { color: #1a4733; font-weight: 800; }
+:root[data-interface-preset='constructivist'] .stage-empty {
+  background: #f1ede4;
+  border: 2px dashed #20201f88;
+  box-shadow: inset 0 0 0 4px #e7e1d4;
+}
+:root[data-interface-preset='constructivist'] .stage-actions {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 2px solid #20201f;
+  gap: 10px;
+}
+:root[data-interface-preset='constructivist'] :is(.stage-buttons .btn,.media-toolbar .btn) {
+  border: 1.5px solid #20201f;
+  background: #f9f5ec;
+  color: #20201f;
+  font-weight: 750;
+  box-shadow: 2px 2px 0 #20201f;
+}
+:root[data-interface-preset='constructivist'] :is(.stage-buttons .btn:hover,.media-toolbar .btn:hover) {
+  background: #20201f;
+  color: #fff8ef;
+  box-shadow: 2px 2px 0 #b5322a;
+}
+:root[data-interface-preset='constructivist'] .stage-buttons .btn.danger {
+  background: #b5322a;
+  color: #fff8ef;
+  border-color: #20201f;
+}
+:root[data-interface-preset='constructivist'] :is(.poke-audio-volume input,.peer-volume input,.quick-volume-panel input) {
+  accent-color: #b5322a;
+}
+:root[data-interface-preset='constructivist'] .poke-permissions {
+  border-left: 2px solid #20201f;
+  padding-left: 12px;
+}
+
+/* Letterpress Chat & Stamp Reactions */
+:root[data-interface-preset='constructivist'] .messages {
+  background-color: #f1ede4;
+  background-image: var(--constructivist-grid-svg);
+}
+:root[data-interface-preset='constructivist'] .channel-intro {
+  border-bottom: 3px solid #20201f;
+  padding: 12px 12px 18px;
+}
+:root[data-interface-preset='constructivist'] .intro-ico {
+  background: #20201f !important;
+  color: #fff8ef !important;
+  border: 2px solid #b5322a !important;
+  box-shadow: 4px 4px 0 #b5322a !important;
+}
+:root[data-interface-preset='constructivist'] .day-divider {
+  margin: 20px 6px 12px;
+  color: #fff8ef;
+  font: 800 11px/1 ui-monospace, Consolas, monospace;
+  letter-spacing: .1em;
+}
+:root[data-interface-preset='constructivist'] .day-divider span {
+  padding: 4px 10px;
+  background: #20201f;
+  border-left: 4px solid #b5322a;
+}
+:root[data-interface-preset='constructivist'] .day-divider::before,
+:root[data-interface-preset='constructivist'] .day-divider::after {
+  height: 2px;
+  background: #20201f;
+}
+:root[data-interface-preset='constructivist'] .msg {
+  border-bottom: 1px dotted #20201f33;
+  border-radius: 0;
+  padding: 7px 10px;
+}
+:root[data-interface-preset='constructivist'] .msg:hover { background: #e7e1d488; }
+:root[data-interface-preset='constructivist'] .chat-reaction {
+  border: 1.5px solid #20201f;
+  background: #f9f5ec;
+  color: #20201f;
+  font-weight: 700;
+  box-shadow: 2px 2px 0 #20201f22;
+}
+:root[data-interface-preset='constructivist'] .chat-reaction[aria-pressed='true'] {
+  background: #b5322a;
+  color: #fff8ef;
+  border-color: #20201f;
+  box-shadow: 2px 2px 0 #20201f;
+}
+:root[data-interface-preset='constructivist'] .composer-wrap {
+  border-top: 4px solid #20201f;
+  background: #e7e1d4;
+}
+:root[data-interface-preset='constructivist'] .composer-toolbar {
+  border-bottom: 1.5px solid #20201f44;
+  padding-bottom: 4px;
+}
+:root[data-interface-preset='constructivist'] .composer-tool {
+  background: #f9f5ec;
+  border: 1.5px solid #20201f;
+  color: #20201f;
+  font-weight: 750;
+  box-shadow: 2px 2px 0 #20201f22;
+}
+:root[data-interface-preset='constructivist'] .composer-tool:hover,
+:root[data-interface-preset='constructivist'] .composer-tool[aria-expanded='true'] {
+  background: #b5322a;
+  color: #fff8ef;
+  border-color: #20201f;
+}
+:root[data-interface-preset='constructivist'] .composer {
+  background: #f9f5ec;
+  border: 2px solid #20201f;
+  border-radius: 0;
+  box-shadow: 4px 4px 0 #20201f1f;
+}
+:root[data-interface-preset='constructivist'] .send-btn {
+  background: #b5322a;
+  color: #fff8ef;
+  border: 1.5px solid #20201f;
+  border-radius: 0;
+  box-shadow: 2px 2px 0 #20201f;
+}
+:root[data-interface-preset='constructivist'] .members {
+  border-left: 4px solid #20201f;
+  background: #e7e1d4;
+}
+:root[data-interface-preset='constructivist'] .members-label {
+  color: #20201f;
+  padding: 8px 6px;
+  border-bottom: 3px solid #b5322a;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+:root[data-interface-preset='constructivist'] .member-role {
+  color: #b5322a;
+  font-weight: 700;
+}
+:root[data-interface-preset='constructivist'] :is(.btn.primary,.btn.danger) { color: #fff8ef; }
+:root[data-interface-preset='constructivist'] .self-panel {
+  background: #f9f5ec;
+  color: #20201f;
+  border: 2px solid #20201f;
+  border-left: 6px solid #b5322a;
+  border-radius: 0;
+  box-shadow: 3px 3px 0 #0006;
+}
+
+/* Index navigation is a horizontal domain strip with a disclosure, not a recolored rail. */
+:root[data-interface-navigation='index'] .app,
+:root[data-interface-navigation='index'] .app.members-open { grid-template-columns: minmax(0,1fr) var(--interface-member); grid-template-rows: 64px minmax(0,1fr); }
+:root[data-interface-navigation='index'] .app.members-hidden { grid-template-columns: minmax(0,1fr); }
+:root[data-interface-navigation='index'] .rail { grid-column: 1 / -1; grid-row: 1; flex-direction: row; justify-content: start; padding: 6px 276px 6px 16px; gap: 12px; border-right: 0; border-bottom: 3px solid #b5322a; }
+:root[data-interface-navigation='index'] .rail-list { flex-direction: row; width: auto; flex: 1; max-height: none; overflow-y: hidden; overflow-x: auto; justify-content: start; }
+:root[data-interface-navigation='index'] .rail-divider { width: 2px; height: 28px; flex: none; }
+:root[data-interface-navigation='index'] .rail-spacer { display: none; }
+:root[data-interface-navigation='index'] :is(.rail-brand,.rail-add,.rail-settings) { flex: none; margin: 0; }
+:root[data-interface-navigation='index'] .rail-item { width: 44px; height: 44px; }
+:root[data-interface-navigation='index'] .rail-indicator { left: 8px; top: auto; bottom: -4px; height: 3px; width: 28px; transform: none; }
+:root[data-interface-navigation='index'] .rail-item:not(.active) .rail-indicator { display: none; }
+:root[data-interface-navigation='index'] .main { grid-column: 1; grid-row: 2; }
+:root[data-interface-navigation='index'] .members { grid-column: 2; grid-row: 2; }
+:root[data-interface-navigation='index'] .sidebar { visibility: hidden; pointer-events: none; position: fixed; top: 156px; bottom: 16px; left: 16px; width: min(316px,calc(100vw - 32px)); z-index: 45; box-shadow: 10px 10px 0 #20201f44; }
+:root[data-interface-navigation='index'][data-interface-index-open='true'] .sidebar { visibility: visible; pointer-events: auto; }
+:root[data-interface-navigation='index'] .self-panel { visibility: visible; pointer-events: auto; position: fixed; top: 8px; bottom: auto; left: auto; right: 10px; width: 248px; height: 48px; z-index: 50; }
+:root[data-interface-navigation='index'] .media-expanded { left: 0; top: 64px; }
+:root[data-interface-reduced='true'] :is(.rail,.sidebar,.main,.members,.modal-root) *,
+:root[data-interface-reduced='true'] :is(.rail,.sidebar,.main,.members,.modal-root) *::before,
+:root[data-interface-reduced='true'] :is(.rail,.sidebar,.main,.members,.modal-root) *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+@media (max-width: 1180px) {
+  :root[data-interface-preset] .app, :root[data-interface-preset] .app.members-hidden, :root[data-interface-preset] .app.members-open { grid-template-columns: var(--interface-rail) var(--interface-sidebar) minmax(0,1fr); }
+  :root[data-interface-preset] .members { display: none; }
+  :root[data-interface-preset] .app.members-open .members { display: block; position: fixed; top: 64px; bottom: 0; right: 0; width: var(--interface-member); z-index: 40; background: var(--bg-side); }
+  :root[data-interface-navigation='index'] .app, :root[data-interface-navigation='index'] .app.members-hidden, :root[data-interface-navigation='index'] .app.members-open { grid-template-columns: minmax(0,1fr); }
+  :root[data-interface-navigation='index'] .app.members-open .members { top: 148px; }
+  :root[data-interface-preset='constructivist'] .topbar { padding-inline: 16px; }
+}
+@media (max-width: 720px) {
+  :root[data-interface-preset] .app, :root[data-interface-preset] .app.members-hidden, :root[data-interface-preset] .app.members-open { grid-template-columns: 56px minmax(0,1fr); }
+  :root[data-interface-preset] .sidebar { visibility: hidden; pointer-events: none; position: fixed; top: 72px; bottom: 76px; left: 64px; width: min(300px,calc(100vw - 76px)); z-index: 45; border: 2px solid var(--line-2); background: var(--bg-side); }
+  :root[data-interface-preset][data-interface-index-open='true'] .sidebar { visibility: visible; pointer-events: auto; }
+  :root[data-interface-preset] .self-panel { visibility: visible; pointer-events: auto; position: fixed; bottom: 0; top: auto; left: 56px; right: 0; margin: 0; width: auto; height: 56px; border-radius: 0; background: var(--bg-side); z-index: 42; }
+  :root[data-interface-preset] .main { padding-bottom: 56px; }
+  :root[data-interface-preset] .topbar { padding-inline: 10px; height: 64px; gap: 8px; }
+  :root[data-interface-preset] .topbar-left { flex: 1; gap: 7px; overflow: hidden; }
+  :root[data-interface-preset] .topbar-name { font-size: 17px; max-width: 38vw; }
+  :root[data-interface-preset] .topbar-icon, :root[data-interface-preset] .topbar-desc, :root[data-interface-preset] .topbar-right .conn-pill, :root[data-interface-preset] #copyDirectInvite { display: none; }
+  :root[data-interface-preset] .topbar-right { gap: 0; }
+  :root[data-interface-preset] .interface-index-button { padding-inline: 7px; font-size: 11px; }
+  :root[data-interface-preset] .voice-stage { padding: 14px; }
+  :root[data-interface-preset] .stage-grid { grid-template-columns: repeat(auto-fit,minmax(150px,1fr)); }
+  :root[data-interface-preset] .media-expanded { left: 56px; bottom: 56px; }
+  :root[data-interface-navigation='index'] .app, :root[data-interface-navigation='index'] .app.members-hidden, :root[data-interface-navigation='index'] .app.members-open { grid-template-columns: minmax(0,1fr); grid-template-rows: 56px minmax(0,1fr); }
+  :root[data-interface-navigation='index'] .rail { padding: 4px 10px; gap: 9px; }
+  :root[data-interface-navigation='index'] .rail-brand { width: 38px; height: 38px; }
+  :root[data-interface-navigation='index'] .rail-settings { width: 34px; }
+  :root[data-interface-navigation='index'] .sidebar { top: 126px; left: 12px; bottom: 68px; width: min(310px,calc(100vw - 24px)); }
+  :root[data-interface-navigation='index'] .self-panel { top: auto; bottom: 0; left: 0; right: 0; width: auto; }
+  :root[data-interface-navigation='index'] .app.members-open .members { top: 120px; bottom: 56px; }
+  :root[data-interface-navigation='index'] .media-expanded { left: 0; top: 56px; }
+}
+:root[data-interface-preset] .msg-text { color: var(--text); }
+:root[data-interface-preset='constructivist'] .msg-text strong { color: #20201f; }
+:root[data-interface-preset='constructivist'] .msg-text a { color: #8f2822; text-decoration: underline; }
+:root[data-interface-preset='constructivist'] .msg-text :is(code,pre) { background: #20201f0f; color: #20201f; border-color: #20201f33; }
+:root[data-interface-preset='constructivist'] .msg-author { color: #514c43 !important; }
+:root[data-interface-preset='constructivist'] .interface-index-button[aria-expanded='true'] { color: #fff8ef; }
+:root[data-interface-preset='constructivist'] .member-screen .screen-status { color: #e7e1d4; }
+
+/* Controls retain the user's explicit corner preference in both compositions. */
+:root[data-interface-preset][data-custom-corners='soft'] :is(.btn,.btn.big,.btn.small,.icon-btn,.input,.modal,.tile,.channel,.composer,.rail-avatar,.interface-index-button,.send-btn) { border-radius: 12px; }
+
+/* Scheme-owned options affect existing nodes without replacing media elements. */
+:root[data-interface-preset] .stage-grid { gap: var(--scheme-content-spacing, 12px); }
+:root[data-interface-preset] .messages { padding-inline: calc(var(--scheme-content-spacing, 12px) * 2); }
+:root[data-interface-preset] .stage-title { font-size: calc(22px * var(--scheme-title-scale, 1)); }
+:root[data-interface-preset='constructivist'] .stage-title { font-size: calc(26px * var(--scheme-title-scale, 1)); }

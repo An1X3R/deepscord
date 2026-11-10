@@ -1,0 +1,73 @@
+{
+  "libavif": "1.4.2",
+  "libavifCommit": "c5240fc79fe5c2407e10afd35f5505ef6333ea49",
+  "libaom": "3.15.2",
+  "emscripten": "6.0.12",
+  "memoryLimitBytes": 268435456,
+  "cmake": {
+    "version": "3.31.6-msvc6",
+    "sha256": "b540efece9172930877dff0c9fedda7a69b0dd82446e0e8bba13372aac6c8ac8"
+  },
+  "ninja": {
+    "version": "1.12.1",
+    "sha256": "5020138b3757035df9dca9a2243624d5810ffa6ae24444bd95f752cbd1b89123"
+  },
+  "perl": {
+    "version": "5.36.0",
+    "sha256": "b565e096ac3c819e66920387fcbabc9477a0fded1622a96c4429ed6fd8125752"
+  },
+  "inputs": [
+    {
+      "path": "tools/avif-codec/bridge.c",
+      "bytes": 13448,
+      "sha256": "3bb19b633086a38b12fc07d529321492f4784202ac7df2e816e1b2215952ee65"
+    },
+    {
+      "path": "tools/avif-codec/build.mjs",
+      "bytes": 13848,
+      "sha256": "4b6fa10cb392e6ee6ac8658692cbedeb099dafc3989de5c23bf1dbd4f743a58d"
+    },
+    {
+      "path": "tools/avif-codec/dependencies.json",
+      "bytes": 662,
+      "sha256": "2059d586debdf892a7992e380bdc67b80288bda13d530e732d95fcbdd0233b53"
+    },
+    {
+      "path": "tools/avif-codec/libavif-files.json",
+      "bytes": 19636,
+      "sha256": "63d989781d2f02a5596b086d17cafefab20b5c754396c7aef7b0df7178cc40bc"
+    }
+  ],
+  "files": [
+    {
+      "path": "module.mjs",
+      "bytes": 14444,
+      "sha256": "94c86a9f4aec9b139faf7c94ee7251e84f299192409e8334212130cfc564f97c"
+    },
+    {
+      "path": "module.wasm",
+      "bytes": 2632294,
+      "sha256": "d2c84c8eca1adf109c2b0ef05e8816345c58630d573c656cf6495abd18cfbc81"
+    },
+    {
+      "path": "codec.mjs",
+      "bytes": 11803,
+      "sha256": "0a8763f2b868dfac80ad9fcc053820236432f22500603f0e08988cc03311fa3b"
+    },
+    {
+      "path": "libavif-LICENSE",
+      "bytes": 20415,
+      "sha256": "165abf92cc04b39e80d29cadea7a6a7e8fddf59407d4ad2616507a7ebe8216f9"
+    },
+    {
+      "path": "libaom-LICENSE",
+      "bytes": 1316,
+      "sha256": "4764a286d8b2faeaf42f4418e7d7a28d58fc8fd4d00a3d0a7f44b0a4099de7f2"
+    },
+    {
+      "path": "libaom-PATENTS",
+      "bytes": 5701,
+      "sha256": "661fb8e504744e95587b556b94a58343448300606a41bea8c7a9b97125696e61"
+    }
+  ]
+}

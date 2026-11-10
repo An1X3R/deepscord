@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'" />
+  <title>Deepscord · 连接服务器</title>
+  <link rel="stylesheet" href="connections.css" />
+</head>
+<body>
+  <main class="connection-panel" aria-labelledby="connectionTitle">
+    <button id="connectionBackBtn" class="back-button" type="button" hidden><span aria-hidden="true">←</span> 返回选择</button>
+    <header class="panel-heading"><span class="eyebrow">DEEPSCORD / CONNECTIONS</span><h1 id="connectionTitle" tabindex="-1">添加服务器</h1><p id="connectionDescription">创建一个新的服务器，或加入朋友的服务器。</p></header>
+    <section id="connectionChoice" class="intent-choices" aria-labelledby="connectionTitle" hidden>
+      <button id="chooseCreateBtn" class="intent-choice" type="button"><span class="choice-symbol" aria-hidden="true">＋</span><span class="choice-copy"><strong>创建服务器</strong><span>建立自己的空间，再邀请朋友加入。</span></span><span class="choice-arrow" aria-hidden="true">→</span></button>
+      <button id="chooseJoinBtn" class="intent-choice" type="button"><span class="choice-symbol" aria-hidden="true">↗</span><span class="choice-copy"><strong>加入服务器</strong><span>已有邀请链接？从这里加入朋友。</span></span><span class="choice-arrow" aria-hidden="true">→</span></button>
+    </section>
+    <section id="connectionBody" aria-labelledby="connectionTitle" hidden>
+      <p class="section-label" id="methodLabel">选择连接方式</p>
+      <div class="method-options" role="group" aria-labelledby="methodLabel">
+        <button id="steamMethodBtn" class="method" aria-pressed="false" type="button"><strong>Steam</strong><span>已登录 Steam 的朋友</span></button>
+        <button id="directMethodBtn" class="method" aria-pressed="false" type="button"><strong>独立直连</strong><span>可相互访问的网络</span></button>
+        <button id="serverMethodBtn" class="method" aria-pressed="false" type="button"><strong>自建服务</strong><span>独立运行的服务器</span></button>
+      </div>
+      <div class="method-placeholder" id="methodPlaceholder">选择一种方式后填写连接信息。</div>
+      <section class="method-form" id="steamCreateSection" hidden>
+        <h2>创建 Steam 房间</h2><p class="hint">先启动并登录 Steam。Steam 负责房间和信令，语音仍由成员网络连接承担。</p>
+        <form id="steamCreateForm"><p class="technical-note">当前使用开发测试 AppID 480。</p><button class="button primary" id="steamCreateBtn" type="submit">创建 Steam 房间</button></form>
+      </section>
+      <section class="method-form" id="directCreateSection" hidden>
+        <h2>创建独立直连房间</h2><p class="hint">填写朋友能访问的本机地址。房间连接需要开放所填 TCP 端口，成员语音还需要 UDP 互通。</p>
+        <form id="directCreateForm"><div class="address-row"><div class="field"><label for="directAddress">本机可访问地址</label><input id="directAddress" class="input" list="directAddresses" required autocomplete="off" spellcheck="false" /><datalist id="directAddresses"></datalist></div><div class="field port-field"><label for="directPort">TCP 端口</label><input id="directPort" class="input" type="number" min="1024" max="65535" step="1" value="38481" required /></div></div><button class="button primary" id="directCreateBtn" type="submit">创建直连房间</button></form>
+      </section>
+      <section class="method-form" id="steamJoinSection" hidden>
+        <h2>使用 Steam 邀请加入</h2><p class="hint">先登录 Steam，再粘贴朋友提供的完整邀请。</p>
+        <form id="steamJoinForm"><div class="field"><label for="steamJoinInvite">Steam 房间邀请</label><textarea id="steamJoinInvite" class="input" required autocomplete="off" spellcheck="false" placeholder="deepscord://steam?…"></textarea></div><button class="button primary" id="steamJoinBtn" type="submit">加入 Steam 房间</button></form>
+      </section>
+      <section class="method-form" id="directJoinSection" hidden>
+        <h2>使用直连邀请加入</h2><p class="hint">粘贴朋友提供的完整邀请。房间已连接不代表成员语音一定可达。</p>
+        <form id="directJoinForm"><div class="field"><label for="directJoinInvite">独立直连房间邀请</label><textarea id="directJoinInvite" class="input" required autocomplete="off" spellcheck="false" placeholder="deepscord://join?…"></textarea></div><button class="button primary" id="directJoinBtn" type="submit">加入直连房间</button></form>
+      </section>
+      <section class="method-form" id="serverSection" hidden>
+        <h2 id="serverSectionTitle">连接独立自建服务</h2><p class="hint" id="serverDescription"></p>
+        <details id="serverDeployment"><summary>独立服务部署说明</summary><p>在服务器机器上单独启动 Deepscord 独立服务端，按随包 NETWORKING.md 配置访问口令、HTTPS 证书和网络端口。客户端只连接已有服务，不会在此安装或启动服务端。</p></details>
+        <form id="serverForm"><div class="field"><label for="serverUrl">已有服务器地址</label><input id="serverUrl" class="input" type="url" required autocomplete="off" spellcheck="false" placeholder="https://你的服务器/" /></div><button class="button primary" id="serverConnectBtn" type="submit">连接服务器</button></form>
+      </section>
+    </section>
+    <section class="created-result" id="createdResult" aria-labelledby="createdTitle" hidden><span class="eyebrow">ROOM READY</span><h2 id="createdTitle">房间已创建</h2><label for="createdInvite">邀请 · 仅分享给要加入的人</label><textarea class="input" id="createdInvite" readonly spellcheck="false"></textarea><div class="actions"><button class="button" id="copyCreatedInviteBtn" type="button">复制邀请</button><button class="button primary" id="enterCreatedRoomBtn" type="button">进入房间</button></div></section>
+    <div class="error-panel" id="connectionError" role="alert" hidden></div>
+    <footer class="panel-status" id="connectionStatus" role="status">正在读取连接配置…</footer>
+  </main>
+  <script type="module" src="connections.js"></script>
+</body>
+</html>

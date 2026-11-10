@@ -1,0 +1,16 @@
+{
+  "name": "deepscord-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Standalone Deepscord room and signaling server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --env-file=server.env server.js"
+  },
+  "engines": {
+    "node": ">=22.13"
+  },
+  "dependencies": {
+    "livekit-server-sdk": "2.19.2"
+  }
+}
