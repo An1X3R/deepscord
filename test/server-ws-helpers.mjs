@@ -139,16 +139,32 @@ async function denied(client, command) {
 /** @param {Message} state @returns {Journal} */
 function journal(state) { const raw = object(state.journal); return parseGovernance(raw,replica.parseRoomDescriptor(raw)); }
 /** @param {Journal} current @param {Identity} actor @param {Command} command @returns {GovernanceEvent} */
-function signedEvent(current, actor, command) { return { revision:current.events.length + 1, previousDigest:current.digest, actorKey:actor.key, command, signature:sign(null,Buffer.from(governancePayload(current,actor.key,command)),actor.privateKey).toString('base64') }; }
+function signedEvent(current, actor, command) { return { revision:governance.governanceRevision(current) + 1, previousDigest:current.digest, actorKey:actor.key, command, signature:sign(null,Buffer.from(governancePayload(current,actor.key,command)),actor.privateKey).toString('base64') }; }
 /** @param {Client} client @param {Identity} actor @param {Journal} current @param {Command} command @returns {Promise<Journal>} */
 async function change(client, actor, current, command) {
   const cursor = send(client,{ t:'governanceChange', event:signedEvent(current,actor,command) });
-  return journal(await receive(client,cursor,message=>message.t === 'serverState' && object(message.journal).events instanceof Array && /** @type {JsonValue[]} */ (object(message.journal).events).length === current.events.length + 1,'signed governance change ' + command.type));
+  return journal(await receive(client,cursor,message=>message.t === 'serverState' && governance.governanceRevision(journal(message)) === governance.governanceRevision(current) + 1,'signed governance change ' + command.type));
 }
 /** @param {Client} client @param {Message} command @returns {Promise<import('../lib/steam-state.cjs').RoomServer[]>} */
 async function structure(client, command) {
+  const supported=['createServer','deleteServer','updateDomain','createChannel','updateChannel','deleteChannel'];
+  if(!supported.includes(string(command.t)))throw new TypeError('Unsupported structure test command: '+string(command.t));
   const cursor = send(client,command);
-  const frame = await receive(client,cursor,message=>message.t === 'servers','structure update ' + string(command.t));
+  const frame = await receive(client,cursor,message=>{
+    if(message.t!=='servers')return false;
+    const servers=steamState.parseSteamStore({version:1,servers:message.servers,messages:{}}).servers;
+    const channels=servers.flatMap(server=>server.channels);
+    // Other peers can still receive earlier broadcasts after this request is sent.
+    switch(command.t){
+      case 'createServer':return servers.some(server=>server.name===command.name);
+      case 'deleteServer':return servers.every(server=>server.id!==command.serverId);
+      case 'updateDomain':return servers.some(server=>server.id===command.domainId && server.name===command.name);
+      case 'createChannel':return servers.some(server=>server.id===command.serverId && server.channels.some(channel=>channel.name===command.name && channel.type===command.type));
+      case 'updateChannel':return channels.some(channel=>channel.id===command.channelId && (command.name===undefined || channel.name===command.name) && (command.userLimit===undefined || channel.userLimit===command.userLimit));
+      case 'deleteChannel':return channels.every(channel=>channel.id!==command.channelId);
+      default:throw new TypeError('Unsupported structure test command');
+    }
+  },'structure update ' + string(command.t));
   return steamState.parseSteamStore({ version:1, servers:frame.servers, messages:{} }).servers;
 }
 /** @param {Client} client @param {string} channelId @returns {Promise<void>} */

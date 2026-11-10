@@ -105,7 +105,7 @@ test('an ordinary member reopens a legacy room and the original owner regains ma
     const restartState=await authenticateWorkspace(restarted,ownerRestarted,ownerEntry);
     assert.equal(object(restartState.server).id,seed.roomId);assert.equal(role(restartState),'server-owner');
     await settle([{client:restarted,workspace:ownerRestarted,entryId:ownerEntry}]);
-    await structure(restarted,{t:'createChannel',serverId:'srv-main',type:'text',name:'Owner after disk restart'});
+    await structure(restarted,{t:'createChannel',serverId:'srv-main',type:'text',name:'Owner after restart'});
     assert.equal(createWorkspaceStore(guestDirectory).get(guestEntry).document?.roomId,seed.roomId);
   } catch(error) {
     if(backend)console.error(JSON.stringify({event:'owner_continuity_failure',output:backend.output()}));
@@ -141,7 +141,7 @@ test('a legitimate transfer carried by a returning workspace restores the curren
     const owned=await authenticateWorkspace(successorClient,successorRestored,successorEntry);
     assert.equal(role(owned),'server-owner');
     await settle([{client:hostClient,workspace:host,entryId:hostEntry},{client:creatorClient,workspace:creator,entryId:creatorEntry},{client:successorClient,workspace:successorRestored,entryId:successorEntry}]);
-    await structure(successorClient,{t:'createChannel',serverId:'srv-main',type:'text',name:'Successor owns management'});
+    await structure(successorClient,{t:'createChannel',serverId:'srv-main',type:'text',name:'Successor management'});
     host.saveServerGovernance(hostEntry,object(owned.journal));
     await stop(backend);backend=await launch(backendDirectory,{});
     const creatorRestart=await connect(backend,'Creator after disk restart');
