@@ -663,6 +663,14 @@
   font: 700 10.5px/1 var(--font-mono);
   color: var(--lanart-signal);
 }
+#theme-lanart .channel.has-unread::before {
+  width: auto;
+  height: auto;
+  padding: 2px 0;
+  text-align: center;
+  background: var(--lanart-signal);
+  color: var(--lanart-surface);
+}
 #theme-lanart .channel:hover {
   background: var(--lanart-signal-soft);
   color: var(--lanart-ink);

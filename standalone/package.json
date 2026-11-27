@@ -2,6 +2,7 @@
   "name": "deepscord-server",
   "version": "1.0.0",
   "private": true,
+  "license": "GPL-3.0-only",
   "description": "Standalone Deepscord room and signaling server",
   "main": "server.js",
   "scripts": {

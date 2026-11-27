@@ -149,7 +149,7 @@ async function pruneApp(temporary,input) {
 /** @param {FileRecord[]} records @returns {void} */
 function verifyContents(records) {
   const names=new Set(records.map(record=>record.path));
-  for(const filename of [...runtimeRequirements,...appRequirements.map(name=>'resources/app/'+name),...resourceExampleFiles.map(name=>'mods/'+name),...[...locales].map(name=>'locales/'+name)]) if(!names.has(filename)) throw new Error('Required runtime or feature file is missing: '+filename);
+  for(const filename of [...runtimeRequirements,'LICENSE-DEEPSCORD.txt',...appRequirements.map(name=>'resources/app/'+name),...resourceExampleFiles.map(name=>'mods/'+name),...[...locales].map(name=>'locales/'+name)]) if(!names.has(filename)) throw new Error('Required runtime or feature file is missing: '+filename);
   for(const record of records) {
     const filename=record.path;
     if(filename.startsWith('locales/') && !locales.has(path.posix.basename(filename))) throw new Error('Unexpected locale shipped: '+filename);
@@ -198,6 +198,7 @@ async function build(input) {
   if(outputs.length!==1) throw new Error('Expected exactly one Windows x64 package; received '+outputs.length);
   const destination=path.join(input.output,'Deepscord-win32-x64');
   fs.renameSync(owned(input.output,outputs[0]),destination);
+  fs.copyFileSync(path.join(root,'LICENSE'),path.join(destination,'LICENSE-DEEPSCORD.txt'),fs.constants.COPYFILE_EXCL);
   const resourceExamples=await buildResourceExamples({sourceDirectory:path.join(root,'public','customization'),destination:path.join(destination,'mods'),signal:new AbortController().signal});
   const records=inventory(destination);
   verifyContents(records);

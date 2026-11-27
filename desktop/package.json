@@ -5,7 +5,7 @@
   "description": "Deepscord — 语音频道桌面客户端",
   "main": "main.js",
   "author": "Deepscord",
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "dependencies": {
     "steamworks.js": "0.4.0"
   }

@@ -23,7 +23,7 @@ if ($LASTEXITCODE -ne 0 -or [version]$nodeVersion -lt [version]'22.13.0') {
 if ((Get-Item -LiteralPath $licensePath).Length -lt 1000) { throw 'NodeLicense must contain the full Node.js distribution license.' }
 
 [void][IO.Directory]::CreateDirectory($outputPath)
-foreach ($name in @('server.js', 'lib', 'public', 'Dockerfile', 'docker-compose.yml', 'NETWORKING.md')) {
+foreach ($name in @('server.js', 'lib', 'public', 'Dockerfile', 'docker-compose.yml', 'NETWORKING.md', 'LICENSE')) {
     Copy-Item -LiteralPath (Join-Path $sourceRoot $name) -Destination $outputPath -Recurse -ErrorAction Stop
 }
 [string]$deployDirectory = Join-Path $outputPath 'deploy'

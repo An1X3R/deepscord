@@ -1,6 +1,7 @@
 # The room server image uses only these Dockerfile inputs.
 **
 !Dockerfile
+!LICENSE
 !package.json
 !package-lock.json
 !server.js

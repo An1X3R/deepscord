@@ -2,6 +2,11 @@
   "name": "deepscord",
   "version": "1.0.0",
   "private": true,
+  "license": "GPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/An1X3R/deepscord.git"
+  },
   "description": "Deepscord — 语音频道（Discord-like voice + text chat，网页 + Windows 桌面客户端）",
   "main": "server.js",
   "scripts": {

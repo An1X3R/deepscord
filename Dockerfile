@@ -6,7 +6,7 @@ WORKDIR /app
 # Install only the pinned standalone server dependency closure.
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
-COPY server.js ./
+COPY server.js LICENSE ./
 COPY lib ./lib
 COPY public ./public
 COPY deploy/livekit-config.cjs ./deploy/livekit-config.cjs
