@@ -95,6 +95,6 @@ npm run typecheck
 Deepscord 自有代码采用 [GNU GPL 第 3 版（GPL-3.0-only）](LICENSE)。第三方组件及素材各自适用原有许可。
 
 ## 特别感谢
-跨国网络测试：[AuCl4](https://github.com/AuCl4H)
+跨国网络测试：[AuCl4](https://github.com/AuCl4H) /n
 Lanart主题设计者：[Mon-Landis](https://github.com/Mon-Landis)
 联合开发者 早期版本正式由他独立编写而成：[Flx707](https://github.com/Flx707)
