@@ -98,3 +98,4 @@ Deepscord 自有代码采用 [GNU GPL 第 3 版（GPL-3.0-only）](LICENSE)。�
 -跨国网络测试：[AuCl4](https://github.com/AuCl4H)   
 -Lanart主题设计者：[Mon-Landis](https://github.com/Mon-Landis)  
 -联合开发者 早期版本正式由他独立编写而成：[Flx707](https://github.com/Flx707)  
+-所有直接或间接对该项目编写过程中有过帮助的人  
