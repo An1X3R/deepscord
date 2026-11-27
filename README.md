@@ -10,6 +10,9 @@ Deepscord 给熟人小队一个自己的语音房。登录 Steam 就能开房，
 开临时房无需租服务器，画质和帧率由你来调。</p>
 <p align="center"><a href="#下载与加入">📦 下载</a> · <a href="#为什么选择-deepscord">⚡ 核心特性</a> · <a href="#实机界面">🖼️ 实机界面</a> · <a href="#怎么选连接方式">🔌 连接方式</a> · <a href="#从源码运行">🛠️ 源码与文档</a></p>
 
+<h2 align="center">您的发电<strong>不会</strong>获取任何特权或专属物品，该项目坚持免费开源原则，此爱发电仅作为支持我们的方式！</h2>
+<p align="center"><a href="docs/assets/afdian-r3dek.jpg"><img src="docs/assets/afdian-r3dek.jpg" width="340" alt="爱发电赞助二维码 · [未认证]R3Dek · 正在创作 Deepscord"></a></p>
+
 ## 为什么选择 Deepscord
 
 - **今晚就能开房。** 发一条 Steam 房间邀请，朋友粘贴后就能加入。局域网里可以直接连房主，长期使用同一组频道的小队也可以部署独立服务端。
