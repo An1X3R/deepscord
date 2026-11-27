@@ -80,7 +80,7 @@
 
 ## 交付文件
 
-- [Deepscord-Performance-20261113.zip](<F:/codex work space/deepscord/work-media-routing/dist/Deepscord-Performance-20261113.zip>)，147.71 MiB，SHA-256 为 `2a49cebe0fd870379f8988837fc357a7215881583ddf6a4e48635ea48153ab84`。
-- [Deepscord-Standalone-Server-Performance-20261113.zip](<F:/codex work space/deepscord/work-media-routing/dist/Deepscord-Standalone-Server-Performance-20261113.zip>)，55.57 MiB，SHA-256 为 `79666f2c40a2fec6d305bd5f4c072653377461f66f3ae54cacb0cb9af4df2a6e`。
+- [Deepscord-Performance-20261113.zip](https://github.com/An1X3R/deepscord/releases/download/snapshot-20261127/Deepscord-Performance-20261113.zip)，147.71 MiB，SHA-256 为 `2a49cebe0fd870379f8988837fc357a7215881583ddf6a4e48635ea48153ab84`。
+- [Deepscord-Standalone-Server-Performance-20261113.zip](https://github.com/An1X3R/deepscord/releases/download/snapshot-20261127/Deepscord-Standalone-Server-Performance-20261113.zip)，55.57 MiB，SHA-256 为 `79666f2c40a2fec6d305bd5f4c072653377461f66f3ae54cacb0cb9af4df2a6e`。
 
-源码位于 work-media-routing，本轮改动保持未提交状态。原始整体采样位于 .qa-tools/results/performance-o1-o4/accepted-*/report.json，汇总位于同目录 comparison.json。组件原始记录位于 .qa-tools/performance-costs-results.json 与 .qa-tools/voice-cadence-results.json。
+原始整体采样位于 .qa-tools/results/performance-o1-o4/accepted-*/report.json，汇总位于同目录 comparison.json。组件原始记录位于 .qa-tools/performance-costs-results.json 与 .qa-tools/voice-cadence-results.json。

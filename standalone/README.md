@@ -10,7 +10,7 @@ Windows x64 测试包，包含 Node.js 和可选 LiveKit 屏幕转发服务。�
 4. 客户端选择“加入服务器 → 自建服务器”，填写 `https://服务器地址:3443`。加入口令是 `server.env` 中的 `ECHO_PASSWORD`。
 5. 首次连接时核对证书指纹。需要成为服主的用户在“服务器与域管理”中填写 `data/owner-claim.txt` 的认领码。成功认领后，该文件会删除。
 
-默认语音由成员直连，屏幕采用用户转发。遇到无法直连的网络，可按 [NETWORKING.md](NETWORKING.md) 配置 STUN/TURN。配置修改后重启对应服务。
+默认语音由成员直连，屏幕采用用户转发。遇到无法直连的网络，可按随包的 `NETWORKING.md` 配置 STUN/TURN。配置修改后重启对应服务。
 
 ## 升级已有服务器
 
@@ -45,4 +45,4 @@ LIVEKIT_TCP_PORT=7881
 
 房间内容加密由服主在 Windows 客户端主动启用。升级程序后，已有房间仍保留其原来的加密状态。内容密钥由客户端保存，服务端程序包不包含成员的内容密钥。
 
-`server.env`、`certs/`、`data/` 和 `logs/` 属于运行期间的私有文件，备份时单独保管。完整网络模式、证书与加密说明见 [NETWORKING.md](NETWORKING.md)。
+`server.env`、`certs/`、`data/` 和 `logs/` 属于运行期间的私有文件，备份时单独保管。完整网络模式、证书与加密说明见发行包根目录的 `NETWORKING.md`，也可查阅[仓库中的网络说明](https://github.com/An1X3R/deepscord/blob/main/NETWORKING.md)。

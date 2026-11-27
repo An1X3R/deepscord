@@ -1,5 +1,7 @@
 # Deepscord Windows 桌面安装包（Deepscord.exe）独立 QA 报告
 
+> 首版 Windows 客户端的 QA 记录。文中截图名为当时的本地测试产物。当前版本及附件见[项目首页](../../README.md)。
+
 - **任务**：team task-2「独立验证 Deepscord Windows 桌面安装包」
 - **执行者**：独立 QA 子智能体（desktop-qa）
 - **执行时间**：2026-11-04 19:23–19:25（Asia/Shanghai）
@@ -142,9 +144,9 @@ dist/Deepscord-win32-x64/
 
 | 截图 | 说明 |
 | --- | --- |
-| [`qa/desktop-remote.png`](qa/desktop-remote.png) | 远程服务器模式，口令登录后 `connStatus=open`，频道渲染正常 |
-| [`qa/desktop-launcher.png`](qa/desktop-launcher.png) | 服务器切换页（bootstrap.html），标题/预填地址/版本号正确 |
-| [`qa/desktop-local.png`](qa/desktop-local.png) | 本机服务器模式 `127.0.0.1:38480`，health OK、频道渲染正常 |
+| `qa/desktop-remote.png` | 远程服务器模式，口令登录后 `connStatus=open`，频道渲染正常 |
+| `qa/desktop-launcher.png` | 服务器切换页（bootstrap.html），标题/预填地址/版本号正确 |
+| `qa/desktop-local.png` | 本机服务器模式 `127.0.0.1:38480`，health OK、频道渲染正常 |
 
 ---
 

@@ -33,7 +33,7 @@
 
 正式证据仅使用 `formal-v6` 的完整六轮。早期诊断、输入尚未固定的试跑和测试路径枚举失败均保留在独立目录，不进入以上统计。正式组全部校验通过，结束后测试进程为零。
 
-原始证据：[完整对比与逐进程数据索引](../.qa-tools/results/memory-lifecycle-20261109/formal-v6/comparison.json)、[资源与前端来源核对](../.qa-tools/results/memory-lifecycle-20261109/formal-v6/checks-audit.json)、[退出检查](../.qa-tools/results/memory-lifecycle-20261109/formal-v6/process-exit-verification.json)。
+原始证据：完整对比与逐进程数据索引（`.qa-tools/results/memory-lifecycle-20261109/formal-v6/comparison.json`）、资源与前端来源核对（`.qa-tools/results/memory-lifecycle-20261109/formal-v6/checks-audit.json`）、退出检查（`.qa-tools/results/memory-lifecycle-20261109/formal-v6/process-exit-verification.json`）。
 
 界面场景使用同一真实本机后端，前端分别来自对应成品。相同版本的 Electron 通过测试包装器装载成品源码，统计包含该控制器开销，不能视为不带控制器的普通冷启动占用。每轮导入相同 JPG 和固定动画 AVIF，实际发送同一动画到文字频道，再进行二十次个人收藏／服务器表情切换、申请弹窗显示与闲置、窗口隐藏与恢复、打开工作区及房间窗口释放。
 
@@ -61,7 +61,7 @@
 - 停止后全部媒体轨道结束，双方 PeerConnection 和 AudioContext 关闭，原生采集程序归零。
 - 六轮测试根进程、子进程、独立音源及受控窗口均退出，没有残留测试进程。
 
-原始证据：[媒体对比 JSON](../.qa-tools/results/memory-media-20261109/comparison.json)、[输入与模块一致性](../.qa-tools/results/memory-media-20261109/fixture-consistency.json)、[退出检查](../.qa-tools/results/memory-media-20261109/cleanup.json)。
+原始证据：媒体对比 JSON（`.qa-tools/results/memory-media-20261109/comparison.json`）、输入与模块一致性（`.qa-tools/results/memory-media-20261109/fixture-consistency.json`）、退出检查（`.qa-tools/results/memory-media-20261109/cleanup.json`）。
 
 ## 当前资源策略
 
@@ -85,13 +85,13 @@
 - 新版实际成品的个人收藏九组验收通过，显式检查页面 visible、图片真实解码、二十次切换不重复读库和稳定节点／监听器。该验收不使用上述 A/B 可见性控制器。
 - 项目类型检查通过。所有源码更改保持未提交，未执行 Git 提交。
 
-证据：[成品个人收藏验收](../.qa-tools/results/memory-optimization-final-visible-20261109/report.json)、[互动音效验收](../.qa-tools/results/interaction-audio/2026-11-09T12-21-51-942Z/report.json)、[指点音效验收](../.qa-tools/results/poke-audio/2026-11-09T12-02-27-246Z/report.json)。对应入口为 `test/media-cache-budget.mjs`、`desktop/test-poke-request-idle.cjs`、`test/interaction-audio.cjs`、`test/poke-audio.cjs` 和 `test/personal-sticker-inline-native.mjs`。
+证据：成品个人收藏验收（`.qa-tools/results/memory-optimization-final-visible-20261109/report.json`）、互动音效验收（`.qa-tools/results/interaction-audio/2026-11-09T12-21-51-942Z/report.json`）、指点音效验收（`.qa-tools/results/poke-audio/2026-11-09T12-02-27-246Z/report.json`）。对应入口为 `test/media-cache-budget.mjs`、`desktop/test-poke-request-idle.cjs`、`test/interaction-audio.cjs`、`test/poke-audio.cjs` 和 `test/personal-sticker-inline-native.mjs`。
 
 ## 复测与交付
 
-交付：[Deepscord-Memory-Optimized-20261109.zip](../dist/Deepscord-Memory-Optimized-20261109.zip)，154,419,392 字节；[SHA-256 文件](../dist/Deepscord-Memory-Optimized-20261109.zip.sha256)。解压整个目录后运行其中的 `Deepscord.exe`，个人资料无需清空。
+交付：Deepscord-Memory-Optimized-20261109.zip（`dist/Deepscord-Memory-Optimized-20261109.zip`），154,419,392 字节；SHA-256 文件（`dist/Deepscord-Memory-Optimized-20261109.zip.sha256`）。解压整个目录后运行其中的 `Deepscord.exe`，个人资料无需清空。
 
-ZIP 的 SHA-256：`d18d4596278c4b50b62dc0c6e97e5a9351ab160fc0a46b83a69d756bb36cf650`。压缩包中全部 258 个文件已逐一解压读取核对哈希；基线 256 个文件和新版 258 个文件均与各自构建清单一致，测试没有改变成品内容。十四个本轮相关源码文件与交付包逐一一致，证据见[交付核对记录](../.qa-tools/results/memory-optimization-release-20261109.json)。
+ZIP 的 SHA-256：`d18d4596278c4b50b62dc0c6e97e5a9351ab160fc0a46b83a69d756bb36cf650`。压缩包中全部 258 个文件已逐一解压读取核对哈希；基线 256 个文件和新版 258 个文件均与各自构建清单一致，测试没有改变成品内容。十四个本轮相关源码文件与交付包逐一一致，证据见交付核对记录（`.qa-tools/results/memory-optimization-release-20261109.json`）。
 
 本轮针对运行资源。解压后新版为 346,679,904 字节，基线为 346,671,514 字节，增加 8,390 字节；没有将本轮写成磁盘体积缩减。
 

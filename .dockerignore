@@ -1,11 +1,13 @@
-data
-certs
-node_modules
-.git
-docs
-test
-*.log
-Dockerfile
-docker-compose.yml
-start.bat
-enable-lan.bat
+# The room server image uses only these Dockerfile inputs.
+**
+!Dockerfile
+!package.json
+!package-lock.json
+!server.js
+!lib/
+!lib/**
+!public/
+!public/**
+!deploy/
+deploy/**
+!deploy/livekit-config.cjs
