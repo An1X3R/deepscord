@@ -10,7 +10,7 @@ const portableTests=[
   'network-policy','session-identity','network-session',
   'server-governance','server-roles','owner-continuity',
   'workspace-store','room-replica-compat',
-  'steam-wire','steam-commands','steam-admission','steam-state','steam-continuity','steam-backend',
+  'steam-session-lifecycle','steam-wire','steam-commands','steam-admission','steam-state','steam-continuity','steam-backend',
   'screen-plan','peer-stats','profile',
   'interaction-scene','interaction-audio-preferences','radio-metadata',
 ];

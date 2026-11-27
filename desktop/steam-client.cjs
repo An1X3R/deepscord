@@ -1,13 +1,14 @@
 // @ts-check
 'use strict';
 
+const { bindSessionCloser, createPeerRegistry, createRecoveryWindow, transientDisconnect } = require('./steam-session-lifecycle.cjs');
 const { randomBytes } = require('node:crypto');
 
 /** @typedef {ReturnType<typeof import('steamworks.js').init>} NativeClient */
 /** @typedef {import('steamworks.js/client').matchmaking.Lobby} Lobby */
 /** @typedef {{ownerId: string, epoch: string|null}} SteamAuthority */
 /** @typedef {SteamAuthority & {lobbyId: string}} LobbyAddress */
-/** @typedef {{type: 'packet', sender: string, data: Buffer} | {type: 'members', members: string[], ownerId: string, epoch: string|null} | {type:'revoked',peerId:string} | {type: 'warning', message: string} | {type: 'peer-error', peerId: string, message: string} | {type: 'error', message: string}} SteamEvent */
+/** @typedef {{type: 'packet', sender: string, data: Buffer} | {type: 'members', members: string[], ownerId: string, epoch: string|null} | {type:'retrying', reason:string|number} | {type:'revoked',peerId:string} | {type: 'warning', message: string} | {type: 'peer-error', peerId: string, message: string} | {type: 'error', message: string}} SteamEvent */
 
 const MAX_PACKET_BYTES = 32 * 1024;
 const MAX_NATIVE_PACKET_BYTES = 1024 * 1024;
@@ -23,6 +24,8 @@ const NAMESPACE = 'deepscord-webrtc-signaling';
 const VERSION = '4';
 /** @type {NativeClient|null} */
 let sharedNative = null;
+/** @type {ReturnType<typeof createPeerRegistry>|null} */
+let sharedPeers = null;
 /** @type {Set<SteamClient>} */
 const activeClients = new Set();
 
@@ -34,10 +37,17 @@ function sharedCallback(kind) {
   const listeners = new Set();
   /** @type {import('steamworks.js/client').callback.Handle|null} */
   let handle = null;
+  let generation = 0;
   return listener => {
     if (!sharedNative) throw new Error('Steam callbacks require an initialized client');
+    if (!handle) {
+      const registered = ++generation;
+      handle = sharedNative.callback.register(kind, event => {
+        if (registered !== generation) return;
+        for (const subscriber of [...listeners]) if (listeners.has(subscriber)) subscriber(event);
+      });
+    }
     listeners.add(listener);
-    if (!handle) handle = sharedNative.callback.register(kind, event => { for (const subscriber of [...listeners]) if (listeners.has(subscriber)) subscriber(event); });
     return () => {
       listeners.delete(listener);
       if (listeners.size === 0 && handle) { handle.disconnect(); handle = null; }
@@ -45,7 +55,7 @@ function sharedCallback(kind) {
   };
 }
 // The native binding stores one callback for each event type.
-const subscriptions = { disconnected:sharedCallback(2),failed:sharedCallback(3),data:sharedCallback(4),members:sharedCallback(5),request:sharedCallback(6),peerError:sharedCallback(7) };
+const subscriptions = { connected:sharedCallback(1),disconnected:sharedCallback(2),failed:sharedCallback(3),data:sharedCallback(4),members:sharedCallback(5),request:sharedCallback(6),peerError:sharedCallback(7) };
 
 /** @param {string} value @param {string} name @returns {bigint} */
 function parseSteamId(value, name) {
@@ -70,10 +80,14 @@ class SteamClient {
   #callbacks = [];
   /** @type {ReturnType<typeof setInterval> | null} */
   #pollTimer = null;
-  /** @type {(() => void) | null} */
+  /** @type {((reason:string) => void) | null} */
   #cancelPending = null;
   #disposed = false;
   #entering = false;
+  /** @type {ReturnType<typeof createPeerRegistry>} */
+  #peers;
+  #recovery = createRecoveryWindow(OPERATION_TIMEOUT_MS, reason => this.#fail('Steam reconnection timed out; reason=' + reason));
+  get recovering() { return this.#recovery.waiting !== undefined; }
   #generation = 0;
   #lastMembership = '';
   /** @type {((sender:string,packet:Buffer)=>boolean)|null} */
@@ -90,6 +104,8 @@ class SteamClient {
     }
     if (typeof onEvent !== 'function') throw new TypeError('Steam event handler must be a function');
     // Loading the native library is deferred until Steam mode is requested.
+    sharedPeers ??= createPeerRegistry(bindSessionCloser());
+    this.#peers = sharedPeers;
     if (!sharedNative) sharedNative = require('steamworks.js').init(appId);
     this.#native = sharedNative;
     this.selfId = this.#native.localplayer.getSteamId().steamId64.toString();
@@ -179,9 +195,11 @@ class SteamClient {
     if (payload.length === 0 || payload.length > MAX_PACKET_BYTES) {
       throw new RangeError(`Steam signaling packet length must be 1..${MAX_PACKET_BYTES}; bytes=${payload.length}, target=${target}`);
     }
+    if (this.recovering) throw new Error('Steam connection is recovering');
     if (target === this.selfId || !this.members().includes(target)) {
       throw new Error(`Steam signaling target is not a remote member of the current lobby; target=${target}`);
     }
+    this.#peers.retain(this, target);
     if (!this.#native.networking.sendP2PPacket(id, 2, payload)) {
       throw new Error(`Steam reliable signaling send failed; target=${target}, bytes=${payload.length}`);
     }
@@ -189,12 +207,13 @@ class SteamClient {
 
   /** @returns {void} */
   leave() {
+    this.#recovery.clear();
     activeClients.delete(this);
     this.#generation += 1;
     this.#entering = false;
     const cancel = this.#cancelPending;
     this.#cancelPending = null;
-    if (cancel) cancel();
+    if (cancel) cancel('Steam lobby operation cancelled');
     if (this.#pollTimer) clearInterval(this.#pollTimer);
     this.#pollTimer = null;
     for (const unsubscribe of this.#callbacks) unsubscribe();
@@ -203,6 +222,7 @@ class SteamClient {
     this.#lobby = null;
     this.#lastMembership = '';
     this.#pendingRequests.clear();
+    for (const peer of this.#peers.peers(this)) this.#releasePeer(peer);
     if (lobby) lobby.leave();
   }
 
@@ -237,6 +257,7 @@ class SteamClient {
     try {
       this.#registerCallbacks();
       const lobby = await this.#waitLobby(operation, label);
+      while (this.#recovery.waiting) await this.#recovery.waiting;
       if (generation !== this.#generation) {
         lobby.leave();
         throw new Error(`Steam lobby operation was cancelled; operation=${label}`);
@@ -268,10 +289,10 @@ class SteamClient {
         this.#cancelPending = null;
         reject(new Error(`Steam lobby operation timed out after ${OPERATION_TIMEOUT_MS}ms; operation=${label}`));
       }, OPERATION_TIMEOUT_MS);
-      this.#cancelPending = () => {
+      this.#cancelPending = reason => {
         settled = true;
         clearTimeout(timer);
-        reject(new Error(`Steam lobby operation cancelled; operation=${label}`));
+        reject(new Error(reason + '; operation=' + label));
       };
       // Late Steam responses must leave their lobby even after cancellation.
       Promise.resolve().then(operation).then((lobby) => {
@@ -295,56 +316,84 @@ class SteamClient {
 
   /** @returns {void} */
   #registerCallbacks() {
-    this.#callbacks.push(subscriptions.disconnected((event) => this.#fail(`Steam servers disconnected; reason=${event.reason}`)));
-    this.#callbacks.push(subscriptions.failed((event) => this.#fail(`Steam server connection failed; reason=${event.reason}, retrying=${event.still_retrying}`)));
-    this.#callbacks.push(subscriptions.members((event) => {
-        if (!this.#lobby || event.lobby !== this.#lobby.id) return;
-        // Native transitions revoke admission even if a rapid rejoin preserves the polled member list.
-        if (event.member_state_change !== 0) this.#onEvent({type:'revoked',peerId:event.user_changed.toString()});
-        this.#lastMembership = '';
+    /** @template E @param {(listener:(event:E)=>void)=>()=>void} subscribe @param {(event:E)=>void} handle */
+    const listen = (subscribe, handle) => {
+      this.#callbacks.push(subscribe(event => {
+        try { handle(event); }
+        catch (error) { this.#fail('Steam callback failed: ' + String(error)); }
+      }));
+    };
+    listen(subscriptions.connected, () => {
+      if (!this.recovering) return;
+      if (this.#native.localplayer.getSteamId().steamId64.toString() !== this.selfId) {
+        this.#fail('Steam account changed while reconnecting');
+        return;
+      }
+      this.#recovery.markConnected();
+      if (!this.#lobby) this.#recovery.clear();
+    });
+    listen(subscriptions.disconnected, event => {
+      if (transientDisconnect.has(event.reason)) this.#beginRecovery(event.reason);
+      else this.#fail('Steam servers disconnected; reason=' + event.reason);
+    });
+    listen(subscriptions.failed, event => {
+      if (event.still_retrying) this.#beginRecovery(event.reason);
+      else this.#fail('Steam server connection failed; reason=' + event.reason);
+    });
+    listen(subscriptions.members, (event) => {
+      if (!this.#lobby || event.lobby !== this.#lobby.id) return;
+      // Native transitions revoke admission even if a rapid rejoin preserves the polled member list.
+      if (event.member_state_change !== 0 && String(event.member_state_change) !== 'Entered') {
+        const peer = event.user_changed.toString();
+        this.#releasePeer(peer);
+        this.#onEvent({type:'revoked',peerId:peer});
+      }
+      if (this.recovering) return;
+      this.#lastMembership = '';
+      this.#publishMembers();
+    });
+    listen(subscriptions.data, (event) => {
+      if (!this.#lobby || event.lobby !== this.#lobby.id) return;
+      if (this.recovering) return;
+      if (!event.success) {
+        this.#fail(`Steam lobby metadata refresh failed; lobbyId=${event.lobby}`);
+        return;
+      }
+      try {
+        this.#validateLobby(this.#lobby);
         this.#publishMembers();
-      }));
-    this.#callbacks.push(subscriptions.data((event) => {
-        if (!this.#lobby || event.lobby !== this.#lobby.id) return;
-        if (!event.success) {
-          this.#fail(`Steam lobby metadata refresh failed; lobbyId=${event.lobby}`);
+      } catch (error) {
+        this.#fail(error instanceof Error ? error.message : String(error));
+      }
+    });
+    listen(subscriptions.request, (event) => {
+      const remote = event.remote.toString();
+      if (remote === this.selfId) {
+        this.#warn(`Rejected Steam P2P session from the local player; remote=${remote}`);
+        return;
+      }
+      this.#flushPendingRequests();
+      if (!this.recovering && this.#lobby && this.members().includes(remote)) {
+        this.#acceptRequest(event.remote);
+        return;
+      }
+      if ([...activeClients].some(client => client !== this && client.members().includes(remote))) return;
+      if (!this.#pendingRequests.has(remote)) {
+        if (this.#pendingRequests.size >= MAX_PENDING_REQUESTS) {
+          this.#warn(`Rejected Steam P2P request because the pending request limit was reached; remote=${remote}, maximum=${MAX_PENDING_REQUESTS}`);
           return;
         }
-        try {
-          this.#validateLobby(this.#lobby);
-          this.#publishMembers();
-        } catch (error) {
-          this.#fail(error instanceof Error ? error.message : String(error));
-        }
-      }));
-    this.#callbacks.push(subscriptions.request((event) => {
-        const remote = event.remote.toString();
-        if (remote === this.selfId) {
-          this.#warn(`Rejected Steam P2P session from the local player; remote=${remote}`);
-          return;
-        }
-        this.#flushPendingRequests();
-        if (this.#lobby && this.members().includes(remote)) {
-          this.#acceptRequest(event.remote);
-          return;
-        }
-        if ([...activeClients].some(client => client !== this && client.members().includes(remote))) return;
-        if (!this.#pendingRequests.has(remote)) {
-          if (this.#pendingRequests.size >= MAX_PENDING_REQUESTS) {
-            this.#warn(`Rejected Steam P2P request because the pending request limit was reached; remote=${remote}, maximum=${MAX_PENDING_REQUESTS}`);
-            return;
-          }
-          this.#pendingRequests.set(remote, { remote: event.remote, expiresAt: Date.now() + PENDING_REQUEST_TTL_MS });
-        }
-        this.#flushPendingRequests();
-      }));
-    this.#callbacks.push(subscriptions.peerError((event) => {
-        if (this.members().includes(event.remote.toString())) {
-          const peerId = event.remote.toString();
-          const message = `Steam P2P session connection failed; remote=${peerId}, code=${event.error}`;
-          this.#peerError(peerId, message);
-        }
-      }));
+        this.#pendingRequests.set(remote, { remote: event.remote, expiresAt: Date.now() + PENDING_REQUEST_TTL_MS });
+      }
+      this.#flushPendingRequests();
+    });
+    listen(subscriptions.peerError, (event) => {
+      if (this.members().includes(event.remote.toString())) {
+        const peerId = event.remote.toString();
+        const message = `Steam P2P session connection failed; remote=${peerId}, code=${event.error}`;
+        this.#peerError(peerId, message);
+      }
+    });
   }
 
   /** @returns {void} */
@@ -359,6 +408,7 @@ class SteamClient {
     this.#flushPendingRequests();
     const signature = `${ownerId}:${epoch}:${[...members].sort().join(',')}`;
     if (signature === this.#lastMembership) return;
+    for (const peer of this.#peers.peers(this)) if (!members.includes(peer)) this.#releasePeer(peer);
     this.#lastMembership = signature;
     this.#onEvent({ type: 'members', members, ownerId, epoch });
   }
@@ -367,10 +417,20 @@ class SteamClient {
   #poll() {
     if (!this.#lobby) return;
     try {
+      if (this.recovering) {
+        if (!this.#recovery.connected) return;
+        if (this.#native.localplayer.getSteamId().steamId64.toString() !== this.selfId) throw new Error('Steam account changed while reconnecting');
+        const members = this.members();
+        if (!members.includes(this.selfId) || !members.includes(this.authority().ownerId)) return;
+        if (!this.#lobby.getData(NAMESPACE_KEY) || !this.#lobby.getData(VERSION_KEY)) return;
+        this.#validateLobby(this.#lobby);
+        this.#recovery.clear();
+        this.#lastMembership = '';
+      }
       this.#publishMembers();
       if (!this.#lobby) return;
       // Steam exposes one packet queue per process, shared by overlapping lobbies.
-      if (activeClients.values().next().value !== this) return;
+      if ([...activeClients].find(client => !client.recovering) !== this) return;
       let receivedBytes = 0;
       for (let index = 0; index < MAX_PACKETS_PER_TICK; index += 1) {
         if (!this.#lobby || receivedBytes >= MAX_RECEIVED_BYTES_PER_TICK) return;
@@ -387,7 +447,7 @@ class SteamClient {
           this.#warn(`Rejected Steam signaling packet with a length mismatch; sender=${sender}, available=${size}, reported=${packet.size}, actual=${packet.data.length}`);
           continue;
         }
-        const recipients = [...activeClients].filter(client => client.#lobby && client.members().includes(sender));
+        const recipients = [...activeClients].filter(client => !client.recovering && client.#lobby && client.members().includes(sender));
         if (sender === this.selfId || recipients.length === 0) {
           this.#warn(`Rejected Steam signaling packet from a nonmember; sender=${sender}, bytes=${size}`);
           continue;
@@ -402,7 +462,10 @@ class SteamClient {
           this.#warn(`Rejected Steam packet outside active room invitations; sender=${sender}, bytes=${size}`);
           continue;
         }
-        for (const client of matching) client.#onEvent({ type: 'packet', sender, data });
+        for (const client of matching) {
+          this.#peers.retain(client, sender);
+          client.#onEvent({ type: 'packet', sender, data });
+        }
       }
     } catch (error) {
       this.#fail(error instanceof Error ? error.message : String(error));
@@ -411,6 +474,7 @@ class SteamClient {
 
   /** @returns {void} */
   #flushPendingRequests() {
+    if (this.recovering || !this.#pendingRequests.size) return;
     const now = Date.now();
     const members = new Set(this.#lobby ? this.members() : []);
     for (const [peerId, request] of this.#pendingRequests) {
@@ -432,12 +496,24 @@ class SteamClient {
   /** @param {bigint} remote @returns {void} */
   #acceptRequest(remote) {
     try {
+      this.#peers.retain(this, remote.toString());
       this.#native.networking.acceptP2PSession(remote);
     } catch (error) {
       const peerId = remote.toString();
       const reason = error instanceof Error ? error.message : String(error);
       this.#peerError(peerId, `Steam P2P session acceptance failed; remote=${peerId}, reason=${reason}`);
     }
+  }
+
+  /** @param {string} peer */
+  #releasePeer(peer) {
+    try { this.#peers.release(this, peer); }
+    catch (error) { this.#warn('Steam session cleanup failed for ' + peer + ': ' + String(error)); }
+  }
+
+  /** @param {string|number} reason */
+  #beginRecovery(reason) {
+    if (this.#recovery.begin(reason)) this.#onEvent({type:'retrying',reason});
   }
 
   /** @param {string} peerId @param {string} message @returns {void} */
@@ -460,6 +536,9 @@ class SteamClient {
 
   /** @param {string} message @returns {void} */
   #fail(message) {
+    const cancel = this.#cancelPending;
+    this.#cancelPending = null;
+    if (cancel) cancel(message);
     this.leave();
     this.#report(message);
   }

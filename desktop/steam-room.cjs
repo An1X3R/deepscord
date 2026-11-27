@@ -280,7 +280,7 @@ class SteamRoomBridge {
     });
     this.httpServer = server;
     server.on('upgrade', (request, socket, head) => {
-      if (this.stopping || this.failed || request.url !== '/ws' || request.headers.origin !== this.origin || request.headers.host !== this.origin.slice(7)) { socket.destroy(); return; }
+      if (this.client.recovering || (this.ownerId !== this.client.selfId && !this.migrating && !this.admission?.authorized(this.ownerId)) || this.stopping || this.failed || request.url !== '/ws' || request.headers.origin !== this.origin || request.headers.host !== this.origin.slice(7)) { socket.destroy(); return; }
       sockets.handleUpgrade(request, socket, head);
     });
     sockets.on('connection', (socket) => this.openLocal(socket));
@@ -545,7 +545,7 @@ class SteamRoomBridge {
 
   /** @param {string} target @param {string} session @param {Kind} kind @param {Buffer} payload @returns {void} */
   transmit(target, session, kind, payload) {
-    if (this.stopping || this.failed || !this.admission?.authorized(target)) return;
+    if (this.stopping || this.failed || this.client.recovering || !this.admission?.authorized(target)) return;
     if(kind==='bulk'){
       this.mediaQueue.send(target,encodeMessage(this.requireInvitation(),session,kind,payload)).catch(error=>console.warn('steam_media_send_failed',{peerId:target,message:error.message}));return;
     }
@@ -573,6 +573,15 @@ class SteamRoomBridge {
   /** @param {SteamEvent} event @returns {void} */
   steamEvent(event) {
     if (this.stopping) return;
+    if (event.type === 'retrying') {
+      console.warn('steam_connection_retrying', {reason:event.reason});
+      for (const peer of this.members) this.admission?.remove(peer);
+      this.replicaAcks.clear();
+      this.assemblies.clear();
+      this.sockets?.closeAll(1012, 'Steam signaling is reconnecting');
+      for (const link of this.backendLinks.values()) this.closeBackend(link.peerId, link.session);
+      return;
+    }
     if (event.type === 'warning') { console.warn('Steam signaling warning', { message: event.message }); return; }
     if (event.type === 'error') { this.fail(event.message); return; }
     if (event.type === 'revoked') {
@@ -649,10 +658,10 @@ class SteamRoomBridge {
     console.warn('Steam peer signaling failed', { peerId, message });
     if (peerId === this.ownerId && this.ownerId !== this.client.selfId) for (const link of this.localLinks.values()) this.rejectLocal(link, message);
     for (const link of this.backendLinks.values()) if (link.peerId === peerId) {
+      this.closeBackend(peerId, link.session);
       try {
         this.transmit(peerId, link.session, 'error', Buffer.from('Steam peer signaling disconnected; reconnecting'));
       } catch (error) { console.warn('Steam disconnect notice could not be delivered', { peerId, message: error instanceof Error ? error.message : 'Native send failed' }); }
-      this.closeBackend(peerId, link.session);
     }
   }
 
@@ -667,7 +676,9 @@ class SteamRoomBridge {
 
   /** @returns {void} */
   sweep() {
-    this.admission?.tick();
+    if (this.client.recovering || this.failed || this.stopping) return;
+    try { this.admission?.tick(); }
+    catch (error) { this.fail(error instanceof Error ? error.message : String(error)); return; }
     if (this.migrating && this.migrationStarted && Date.now() - this.migrationStarted > 30000) { this.fail('房主接替超过 30 秒，未收到新房主的完整频道状态；现有媒体连接保留'); return; }
     if (this.ownerId === this.client.selfId && !this.migrating) for (const [peer, pending] of this.replicaAcks) {
       if (Date.now() - pending.at < 2000) continue;
@@ -773,8 +784,8 @@ class SteamRoomBridge {
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
     this.mediaQueue.close();
-    await this.stopMedia();
-    this.client.dispose();
+    try { await this.stopMedia(); }
+    finally { this.client.dispose(); }
     for (const link of this.backendLinks.values()) this.closeBackend(link.peerId, link.session);
     this.sockets?.closeAll(1000, 'Steam room closed');
     this.assemblies.clear();

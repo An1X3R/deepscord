@@ -17,6 +17,12 @@ const locales=new Set(['zh-CN.pak','zh-TW.pak','en-US.pak']);
 const excluded=/^\/(?:mods(?:\/|$)|test-|desktop-test-|capture-(?:analysis|integration|window)|build-test-tone|process-tone-test|(?:windows-protection|poke-window-bounds)\.ps1$|native\/(?:screen-relay(?:\/|$)|(?:process-audio|global-ptt|windows-protection|poke-window-bounds)\.cpp$|bin\/.*\.(?:obj|pdb)$))/;
 const runtimeRequirements=['Deepscord.exe','dxcompiler.dll','resources.pak','icudtl.dat','LICENSES.chromium.html','LICENSE','vk_swiftshader.dll','d3dcompiler_47.dll','ffmpeg.dll','vulkan-1.dll','chrome_200_percent.pak','v8_context_snapshot.bin','chrome_100_percent.pak','electron_wer.dll','snapshot_blob.bin','vk_swiftshader_icd.json','version'];
 const appRequirements=['native/bin/screen-relay.exe','native/bin/process-audio.exe','native/bin/screen-relay-NOTICES.txt','node_modules/steamworks.js/LICENSE','node_modules/@types/node/LICENSE','node_modules/undici-types/LICENSE','node_modules/steamworks.js/dist/win64/steam_api64.dll','node_modules/steamworks.js/dist/win64/steamworksjs.win32-x64-msvc.node','app-server/server.js','direct-certificate.ps1'];
+const ffiRuntime = [
+  'koffi/package.json', 'koffi/LICENSE.txt', 'koffi/index.cjs', 'koffi/src/koffi/index.cjs',
+  'koffi/src/koffi/src/static.cjs', '@koromix/koffi-win32-x64/package.json',
+  '@koromix/koffi-win32-x64/index.js', '@koromix/koffi-win32-x64/win32_x64/koffi.node',
+].map(name=>'node_modules/'+name);
+appRequirements.push('steam-session-lifecycle.cjs',...ffiRuntime);
 appRequirements.push('global-ptt.cjs','native/bin/global-ptt.exe','app-server/public/js/chat-unread.js');
 appRequirements.push('chat-unread-store.cjs','app-server/lib/atomic-file.cjs','app-server/public/js/reply-composer.js','app-server/public/js/chat-extras.js');
 appRequirements.push('notification-sounds.cjs','app-server/public/js/notification-sounds.js','app-server/public/js/avatar-crop.js');
@@ -109,6 +115,9 @@ function stageSources(output,stagedApp) {
   const desktop=path.join(root,'desktop');
   fs.cpSync(desktop,stagedApp,{recursive:true,errorOnExist:true,force:false,filter:filename=>{
     const relative=path.relative(desktop,filename).split(path.sep).join('/');
+    if (/^node_modules\/(?:koffi|@koromix)(?:\/|$)/.test(relative)) {
+      return ffiRuntime.some(name=>name===relative || name.startsWith(relative+'/'));
+    }
     return relative!=='app-server' && !relative.startsWith('app-server/') && !excluded.test('/'+relative);
   }});
   const server=path.join(stagedApp,'app-server');
@@ -171,7 +180,7 @@ function compareBaseline(records,baseline) {
 /** @param {string} directory @returns {void} */
 function verifyNativeModule(directory) {
   const app=path.join(directory,'resources','app');
-  const expression='const steam=require('+JSON.stringify(path.join(app,'node_modules','steamworks.js'))+');if(typeof steam.init!=="function")throw new TypeError("Packaged Steam module does not expose init");process.stdout.write("packaged_steam_module_loaded");';
+  const expression='const steam=require('+JSON.stringify(path.join(app,'node_modules','steamworks.js'))+');if(typeof steam.init!=="function")throw new TypeError("Packaged Steam module does not expose init");require('+JSON.stringify(path.join(app,'steam-session-lifecycle.cjs'))+').bindSessionCloser();process.stdout.write("packaged_steam_module_loaded");';
   const result=spawnSync(path.join(directory,'Deepscord.exe'),['-e',expression],{cwd:app,env:{...process.env,ELECTRON_RUN_AS_NODE:'1'},windowsHide:true,encoding:'utf8',timeout:15000});
   if(result.error) throw result.error;
   if(result.status!==0 || result.stdout!=='packaged_steam_module_loaded') throw new Error('Packaged Electron could not load its actual Windows Steam native module: '+JSON.stringify({status:result.status,signal:result.signal,stdout:result.stdout,stderr:result.stderr}));
