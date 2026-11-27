@@ -1,12 +1,17 @@
 html,body,#pointers{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;pointer-events:none;user-select:none}
-.poke-marker{--poke-scale:1;position:absolute;width:0;height:0;color:#87d8ce;animation:fade 1.6s linear both}
+.poke-marker{--poke-scale:1;--poke-angle:-25deg;--poke-jitter:0px;--poke-turn:0deg;position:absolute;width:0;height:0;color:#87d8ce;animation:fade 1.6s linear both}
 .poke-target{position:absolute;left:-4px;top:-4px;width:8px;height:8px;box-sizing:border-box;border:1px solid currentColor;border-radius:50%;background:#15191b99;box-shadow:0 0 2px #15191b}
 .poke-target::after{content:"";position:absolute;left:2px;top:2px;width:2px;height:2px;background:currentColor;border-radius:50%}
-.poke-finger{position:absolute;left:-18px;top:-3px;width:36px;height:40px;text-align:center;font:32px/40px "Segoe UI Emoji","Noto Color Emoji","Apple Color Emoji",sans-serif;transform-origin:18px 3px;transform:rotate(-25deg) scale(var(--poke-scale));filter:drop-shadow(0 1px 2px #15191b);animation:slam .16s ease-out}
+.poke-finger{position:absolute;left:-18px;top:-3px;width:36px;height:40px;text-align:center;font:32px/40px "Segoe UI Emoji","Noto Color Emoji","Apple Color Emoji",sans-serif;transform-origin:18px 3px;transform:rotate(var(--poke-angle)) scale(var(--poke-scale));filter:drop-shadow(0 1px 2px #15191b);animation:slam .16s ease-out}
 .poke-badge{position:absolute;left:20px;top:18px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:#15191b;color:var(--poke-identity);border:1px solid currentColor;border-left-width:3px;border-radius:4px;padding:2px 5px;font:11px system-ui}
-[data-heat="2"]{--poke-scale:1.1;color:#f59a55}[data-heat="2"] .poke-finger{filter:drop-shadow(0 0 3px #f59a55)}
-[data-heat="3"]{--poke-scale:1.2;color:#f2556b}[data-heat="3"] .poke-finger{filter:drop-shadow(0 0 4px #f2556b);animation:shake .12s steps(2) 4}
-@keyframes slam{from{transform:rotate(-25deg) scale(calc(var(--poke-scale)*.8))}to{transform:rotate(-25deg) scale(var(--poke-scale))}}
-@keyframes shake{0%,100%{transform:rotate(-25deg) scale(var(--poke-scale))}50%{transform:rotate(-23deg) scale(var(--poke-scale))}}
+[data-heat="2"]{--poke-scale:1.28;--poke-jitter:1px;--poke-turn:3deg;color:#f59a55}[data-heat="2"] .poke-finger{filter:brightness(.8) sepia(.85) saturate(4.2) hue-rotate(-26deg) contrast(1.05);animation:shake .095s steps(2) 8}
+[data-heat="3"]{--poke-scale:1.6;--poke-jitter:4px;--poke-turn:10deg;color:#f2556b}[data-heat="3"] .poke-finger{filter:brightness(.55) sepia(1) saturate(8.5) hue-rotate(-34deg) contrast(1.25) brightness(1.25);animation:shake .065s steps(2) 14}
+[data-heat="4"]{--poke-scale:1.85;--poke-jitter:5px;--poke-turn:12deg;color:#d93576}[data-heat="4"] .poke-finger{filter:brightness(.45) sepia(1) saturate(13) hue-rotate(-38deg) contrast(1.55) brightness(.9);animation:shake .055s steps(2) 20}
+[data-gesture="middle"]{--poke-scale:2;--poke-angle:0deg;--poke-turn:14deg}[data-gesture="middle"] .poke-finger{left:-21.5px;top:-6.5px;transform-origin:21.5px 6.5px}
+[data-heat="4"] .poke-target::before,[data-heat="4"] .poke-target::after{content:"";position:absolute;inset:-6px;width:auto;height:auto;background:transparent;border:1px solid currentColor;border-radius:50%;animation:pulse .48s ease-out 2}
+[data-heat="4"] .poke-target::after{inset:-11px;animation-delay:.15s}
+@keyframes pulse{from{transform:scale(.4);opacity:.9}to{transform:scale(2.2);opacity:0}}
+@keyframes slam{from{transform:rotate(var(--poke-angle)) scale(calc(var(--poke-scale)*.8))}to{transform:rotate(var(--poke-angle)) scale(var(--poke-scale))}}
+@keyframes shake{0%,100%{transform:rotate(var(--poke-angle)) scale(var(--poke-scale))}25%{transform:translate(var(--poke-jitter),calc(-1 * var(--poke-jitter))) rotate(calc(var(--poke-angle) + var(--poke-turn))) scale(var(--poke-scale))}75%{transform:translate(calc(-1 * var(--poke-jitter)),var(--poke-jitter)) rotate(calc(var(--poke-angle) - var(--poke-turn))) scale(var(--poke-scale))}}
 @keyframes fade{0%,75%{opacity:1}100%{opacity:0}}
-@media(prefers-reduced-motion:reduce){.poke-marker,.poke-finger,[data-heat="3"] .poke-finger{animation:none}}
+@media(prefers-reduced-motion:reduce){.poke-marker,.poke-marker .poke-finger,[data-heat] .poke-target::before,[data-heat] .poke-target::after{animation:none}}

@@ -24,7 +24,7 @@ async function ready(page){await page.waitFor('window.echo?.getState().roomReady
 /** @param {Awaited<ReturnType<typeof connectPage>>} page @param {string} id @returns {Promise<void>} */
 async function click(page,id){await page.eval('(()=>{const target=document.getElementById('+JSON.stringify(id)+');if(!(target instanceof HTMLElement))throw new Error("Missing stable UI ID: '+id+'");target.click();})()');}
 /** @param {Awaited<ReturnType<typeof connectPage>>} page @returns {Promise<void>} */
-async function panel(page){await ready(page);await page.waitFor('!document.getElementById("customizationPanel")',{timeout:3000,interval:50,label:'previous panel removed'});await click(page,'serverMenuBtn');await click(page,'themeCustomizationMenuBtn');await page.waitFor('!!document.getElementById("customizationSchemeOption-content-spacing") && !document.getElementById("customizationThemeSave").disabled',{timeout:3000,interval:50,label:'local theme panel'});}
+async function panel(page){await ready(page);await page.waitFor('!document.getElementById("customizationPanel")',{timeout:3000,interval:50,label:'previous panel removed'});await page.eval('window.echo.actions.openSettings()');await click(page,'themeCustomizationMenuBtn');await page.waitFor('!!document.getElementById("customizationSchemeOption-content-spacing") && !document.getElementById("customizationThemeSave").disabled',{timeout:3000,interval:50,label:'local theme panel'});}
 try{
   const actor=identity(),owner=await connect(backend,'Owner');await authenticate(owner,actor);
   const cursor=send(owner,{t:'claimOwner',token:fs.readFileSync(path.join(directory,'server/owner-claim.txt'),'utf8').trim()});

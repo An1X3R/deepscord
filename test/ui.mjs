@@ -81,13 +81,13 @@ async function main() {
   );
 
   section('设置面板');
-  await page.eval('window.echo.actions.openSettings()');
+  await page.eval('window.echo.actions.openVoiceSettings()');
   await page.waitFor("!!document.querySelector('.modal-backdrop.open')", { timeout: 5000, label: '设置弹窗' });
   check('设置弹窗打开', true);
   const settingTitles = await page.eval(
     "[...document.querySelectorAll('.modal-body .settings-section h3')].map(h => h.textContent)"
   );
-  check('设置分组齐全', ['个人资料', '语音设备', '音量', '输入模式', '其他'].every((t) => settingTitles.includes(t)), settingTitles.join('/'));
+  check('设置分组齐全', ['语音设备', '音量', '输入模式'].every((t) => settingTitles.includes(t)), settingTitles.join('/'));
   check('有输入/输出设备下拉', (await page.eval("document.querySelectorAll('.modal-body select').length")) === 2);
 
   // 测试麦克风（触发权限 + 电平条）

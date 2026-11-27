@@ -46,12 +46,12 @@ try{
     await page.send('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:false});await theme(page,preset);
     assert.equal(await page.eval('document.documentElement.scrollWidth===innerWidth'),true,'Viewport overflow');
     await capture(page,'chat',preset,width,['.main','.composer']);
-    await click(page,'railSettingsBtn');await wait(page,'!!document.getElementById("audioSettingsDone")','real settings');
-    await capture(page,'settings',preset,width,['.modal','#profileName','.seg.active']);
-    await click(page,'audioSettingsDone');await wait(page,'!document.querySelector(".modal")','settings closed');
+    await click(page,'railSettingsBtn');await wait(page,'!!document.getElementById("softwareSettingsDone")','real settings');
+    await capture(page,'settings',preset,width,['.modal','#profileName','#themeCustomizationMenuBtn']);
+    await click(page,'softwareSettingsDone');await wait(page,'!document.querySelector(".modal")','settings closed');
     await theme(page,preset);await click(page,'interfaceChannelIndex');
-    await click(page,'serverMenuBtn');await capture(page,'menu',preset,width,['.context-menu','#themeCustomizationMenuBtn']);
-    await click(page,'themeCustomizationMenuBtn');await wait(page,'!!document.getElementById("customizationSchemePickerTrigger") || !!document.getElementById("customizationThemeSave")','local theme panel');
+    await click(page,'serverMenuBtn');await capture(page,'menu',preset,width,['.context-menu','#serverGovernanceMenuBtn']);
+    await page.eval('document.body.click();window.echo.actions.openSettings()');await click(page,'themeCustomizationMenuBtn');await wait(page,'!!document.getElementById("customizationSchemePickerTrigger") || !!document.getElementById("customizationThemeSave")','local theme panel');
     await theme(page,preset);await capture(page,'customization',preset,width,['.modal','.scheme-picker-trigger']);
     await click(page,'customizationClose');await wait(page,'!document.querySelector(".modal")','customization closed');await theme(page,preset);
     await click(page,'emojiPanelBtn');await click(page,'stickerPanelTabunicode');await capture(page,'stickers',preset,width,['#stickerPanel','.sticker-cell','.sticker-panel-tabs','.sticker-tab.active']);

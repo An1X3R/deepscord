@@ -63,13 +63,21 @@ export function profilePayload(profile) {
   return { profileId: validated.id, avatar: validated.avatar };
 }
 
-/** @param {File} file @returns {Promise<string>} */
-export async function prepareAvatar(file) {
+/** @param {File} file @returns {Promise<ImageBitmap>} */
+export async function loadAvatarImage(file) {
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new TypeError('Choose a JPEG, PNG, or WebP image.');
   if (file.size > 10 * 1024 * 1024) throw new RangeError('Source image must be no larger than 10 MiB.');
   const bitmap = await createImageBitmap(file);
-  try {
-    if (bitmap.width < 1 || bitmap.height < 1 || bitmap.width * bitmap.height > 40000000) throw new RangeError('Source image dimensions exceed 40 megapixels.');
+  if (bitmap.width < 1 || bitmap.height < 1 || bitmap.width * bitmap.height > 40000000){bitmap.close();throw new RangeError('Source image dimensions exceed 40 megapixels.');}
+  if(Math.max(bitmap.width,bitmap.height)<=2048)return bitmap;
+  const scale=2048/Math.max(bitmap.width,bitmap.height);
+  try{return await createImageBitmap(bitmap,{resizeWidth:Math.max(1,Math.round(bitmap.width*scale)),resizeHeight:Math.max(1,Math.round(bitmap.height*scale)),resizeQuality:'high'});}
+  finally{bitmap.close();}
+}
+
+/** @param {ImageBitmap} bitmap @param {{x:number,y:number,size:number}} crop @returns {string} */
+export function encodeAvatarCrop(bitmap,crop){
+    if(!Number.isFinite(crop.x)||!Number.isFinite(crop.y)||!Number.isFinite(crop.size)||crop.x<0||crop.y<0||crop.size<=0||crop.x+crop.size>bitmap.width+0.001||crop.y+crop.size>bitmap.height+0.001)throw new RangeError('Avatar crop must stay inside the source image.');
     const canvas = document.createElement('canvas');
     canvas.width = 96;
     canvas.height = 96;
@@ -77,14 +85,18 @@ export async function prepareAvatar(file) {
     if (!context) throw new Error('Avatar canvas is unavailable.');
     context.fillStyle = '#252733';
     context.fillRect(0, 0, 96, 96);
-    const side = Math.min(bitmap.width, bitmap.height);
-    context.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, 96, 96);
+    context.imageSmoothingQuality='high';
+    context.drawImage(bitmap, crop.x, crop.y, crop.size, crop.size, 0, 0, 96, 96);
     const encoded = canvas.toDataURL('image/jpeg', 0.72);
     if (encoded.length > MAX_LENGTH) throw new RangeError('Compressed avatar exceeds 12 KiB.');
     return encoded;
-  } finally {
-    bitmap.close();
-  }
+}
+
+/** @param {File} file @returns {Promise<string>} */
+export async function prepareAvatar(file) {
+  const bitmap=await loadAvatarImage(file);
+  try{const size=Math.min(bitmap.width,bitmap.height);return encodeAvatarCrop(bitmap,{x:(bitmap.width-size)/2,y:(bitmap.height-size)/2,size});}
+  finally{bitmap.close();}
 }
 
 /** @param {HTMLElement} element @param {{name: string, color: string, avatar?: string|null}} profile @returns {void} */

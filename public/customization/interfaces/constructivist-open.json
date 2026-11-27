@@ -2,9 +2,9 @@
   "version": 1,
   "id": "constructivist-open",
   "name": "构成报刊·开放主题",
-  "description": "完整的本地布局、样式与隔离脚本。横向刊头、阶梯目录、纸墨阅读面与机械入场。",
+  "description": "《赤楔宣言 · 人们，我们》——窄体工业排印、破界红楔刊头、舒霍夫电塔舞台与纸墨错版叠印，兼顾全功能直达与高对比度阅读。",
   "theme": {
-    "accent": "#dc5148",
+    "accent": "#b6342a",
     "background": "slate",
     "density": "compact",
     "corners": "square"
@@ -38,6 +38,34 @@
       "step": 0.05,
       "unit": "",
       "cssVariable": "--scheme-title-scale"
+    },
+    {
+      "id": "material-mode",
+      "label": "纸墨质感",
+      "type": "select",
+      "default": "print",
+      "cssVariable": "--scheme-paper-grain",
+      "choices": [
+        {
+          "value": "print",
+          "label": "纸面叠印 (Print Faktura)",
+          "cssValue": "1"
+        },
+        {
+          "value": "flat",
+          "label": "清晰平涂 (Clean Flat)",
+          "cssValue": "0"
+        }
+      ]
+    },
+    {
+      "id": "construction-rig",
+      "label": "尺规建构线",
+      "type": "toggle",
+      "default": true,
+      "on": "1",
+      "off": "0",
+      "cssVariable": "--scheme-rig-opacity"
     }
   ],
   "files": {

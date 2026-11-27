@@ -42,7 +42,7 @@ test('owner migrates real loopback history and referenced media in place, then n
     const bytes=fs.readFileSync(new URL('avif-codec-fixtures/transparent-animation.avif',import.meta.url));
     const asset=await upload(owner,bytes,null);
     governance=await change(owner,ownerIdentity,governance,{type:'putEmoji',domainId:null,emojiId:'history-emoji',name:'Original emoji',asset,ts:Date.now()});
-    const sent=parseChatMessage((await request(owner,'chat',{channelId:'ch-chat',text:'Persistent secret text',attachment:{...asset,kind:'sticker',name:'Original sticker'}})).message ?? null);
+    const sent=parseChatMessage((await request(owner,'chat',{channelId:'ch-chat',text:'Persistent secret text',replyToId:'historic-reference',attachment:{...asset,kind:'sticker',name:'Original sticker'}})).message ?? null);
     const reactionCursor=send(owner,{t:'setReaction',requestId:randomUUID(),channelId:'ch-chat',messageId:sent.id,selection:{kind:'server',emojiId:'history-emoji'},active:true});
     await receive(owner,reactionCursor,message=>message.t==='reactionResult'&&message.ok===true,'normal historical reaction');
     const key=generateContentKey(),roomId=owner.challenge.roomId;
@@ -70,7 +70,7 @@ test('owner migrates real loopback history and referenced media in place, then n
     assert.deepEqual(parseSteamStore(JSON.parse(recovery)).content,policy);
     for(const message of store.messages['ch-chat']){
       assert(message.sealed&&message.clientRequestId);
-      assert.equal(message.text,'');assert.equal(message.reactions,undefined);
+      assert.equal(message.text,'');assert.equal(message.reactions,undefined);assert.equal(message.replyToId,undefined);
       assert.deepEqual(openMessage({roomId,channelId:'ch-chat',requestId:message.clientRequestId},message.sealed,key.key),originals.get(message.id));
     }
     const objectDirectory=path.join(directory,'media',roomId,'objects');
@@ -81,10 +81,18 @@ test('owner migrates real loopback history and referenced media in place, then n
     await authenticate(newcomer,newcomerIdentity);
     const welcome=newcomer.messages.find(message=>message.t==='welcome');assert(welcome);assert.deepEqual(welcome.content,policy);
     assert.equal(object(welcome.messages)['ch-chat'] instanceof Array,true);
-    const requestId=randomUUID(),sealed=sealMessage({context:{roomId,channelId:'ch-chat',requestId},keyId:key.id,key:key.key,nonce:randomBytes(12),memberKey:newcomerIdentity.key,sign:payload=>sign(null,payload,newcomerIdentity.privateKey)},{text:'New encrypted content'});
+    const requestId=randomUUID(),sealed=sealMessage({context:{roomId,channelId:'ch-chat',requestId},keyId:key.id,key:key.key,nonce:randomBytes(12),memberKey:newcomerIdentity.key,sign:payload=>sign(null,payload,newcomerIdentity.privateKey)},{text:'New encrypted content',replyToId:sent.id});
     const chatCursor=send(newcomer,{t:'chat',channelId:'ch-chat',requestId,text:'',sealed});
     const acknowledged=await receive(newcomer,chatCursor,message=>message.t==='chatResult'&&message.requestId===requestId,'new member encrypted chat');assert.equal(acknowledged.ok,true,JSON.stringify(acknowledged));
-    const target=parseChatMessage(object(acknowledged.result).message ?? null),reactionId=randomUUID(),reactionSealed=sealMessage({context:{roomId,channelId:'ch-chat',requestId:reactionRequestId(target.id,reactionId)},keyId:key.id,key:key.key,nonce:randomBytes(12),memberKey:newcomerIdentity.key,sign:payload=>sign(null,payload,newcomerIdentity.privateKey)},{selection:{kind:'unicode',emoji:'👍'},active:true});
+    const target=parseChatMessage(object(acknowledged.result).message ?? null);
+    assert.equal(target.replyToId,undefined);
+    assert.deepEqual(openMessage({roomId,channelId:'ch-chat',requestId},sealed,key.key),{text:'New encrypted content',replyToId:sent.id});
+    assert.throws(()=>parseChatMessage({...target,replyToId:sent.id}),/no plaintext/);
+    for(const invalidRequest of [requestId,randomUUID()]) {
+      const cursor=send(newcomer,{t:'chat',channelId:'ch-chat',requestId:invalidRequest,text:'',sealed,replyToId:sent.id});
+      const rejected=await receive(newcomer,cursor,message=>message.t==='chatResult'&&message.requestId===invalidRequest,'outer reply rejection');assert.equal(rejected.ok,false);
+    }
+    const reactionId=randomUUID(),reactionSealed=sealMessage({context:{roomId,channelId:'ch-chat',requestId:reactionRequestId(target.id,reactionId)},keyId:key.id,key:key.key,nonce:randomBytes(12),memberKey:newcomerIdentity.key,sign:payload=>sign(null,payload,newcomerIdentity.privateKey)},{selection:{kind:'unicode',emoji:'👍'},active:true});
     const reactionFrame={t:'setReaction',channelId:'ch-chat',messageId:target.id,requestId:reactionId,sealed:reactionSealed};
     for(let attempt=0;attempt<2;attempt++){const cursor=send(newcomer,reactionFrame),reply=await receive(newcomer,cursor,message=>message.t==='reactionResult'&&message.requestId===reactionId,'encrypted reaction accepted without disconnect');assert.equal(reply.ok,true,JSON.stringify(reply));const updated=parseChatMessage(object(reply.result).message ?? null);assert.equal(updated.sealedReactions?.length,1);assert.equal(updated.reactions,undefined);assert.deepEqual(openMessage({roomId,channelId:'ch-chat',requestId:reactionRequestId(updated.id,reactionId)},updated.sealedReactions[0].sealed,key.key),{selection:{kind:'unicode',emoji:'👍'},active:true});}
     const freshCipher=sealFile({version:1,roomId,keyId:key.id,nonce:randomBytes(12).toString('base64url'),kind:'server',bytes:bytes.length,width:48,height:48,animated:true,frames:2,durationMs:200},key.key,bytes),freshAsset=await upload(owner,freshCipher,true);
@@ -102,7 +110,7 @@ test('owner migrates real loopback history and referenced media in place, then n
     const restored=await connectHello(backend,{t:'hello',name:'Restored member',color:'#123456',password:'',resumable:false,contentVersion:1});
     await authenticate(restored,newcomerIdentity);
     const restoredWelcome=restored.messages.find(message=>message.t==='welcome');assert(restoredWelcome);assert.deepEqual(restoredWelcome.content,policy);
-    const restoredMessages=object(restoredWelcome.messages)['ch-chat'];assert(Array.isArray(restoredMessages));const restoredTarget=restoredMessages.map(parseChatMessage).find(message=>message.id===target.id);assert.equal(restoredTarget?.sealedReactions?.length,2);
+    const restoredMessages=object(restoredWelcome.messages)['ch-chat'];assert(Array.isArray(restoredMessages));const restoredTarget=restoredMessages.map(parseChatMessage).find(message=>message.id===target.id);assert.equal(restoredTarget?.sealedReactions?.length,2);assert.equal(restoredTarget?.replyToId,undefined);assert(restoredTarget?.sealed);assert.deepEqual(openMessage({roomId,channelId:'ch-chat',requestId},restoredTarget.sealed,key.key),{text:'New encrypted content',replyToId:sent.id});
     assert.deepEqual(parseMediaMetadata((await request(restored,'mediaRequest',{op:'info',sha256:freshAsset.sha256})).asset ?? null),freshAsset);
     assert.equal(governanceRevision(journal(restored.messages.find(message=>message.t==='serverState'&&message.selfKey===newcomerIdentity.key) ?? {})),governanceRevision(governance));
     assert.equal(fs.readdirSync(path.join(directory,'governance-archive')).length,1);

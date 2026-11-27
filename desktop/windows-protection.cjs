@@ -6,19 +6,40 @@ const {spawn}=require('node:child_process');
 const MAGIC=Buffer.from('DSDP001\0');
 const MAX_BYTES=4*1024*1024;
 /** @returns {string} */
-function executable(){if(process.platform!=='win32'||!process.env.SystemRoot)throw new Error('Room key protection requires Windows');const filename=path.join(process.env.SystemRoot,'System32','WindowsPowerShell','v1.0','powershell.exe');if(!fs.statSync(filename).isFile())throw new Error('Windows DPAPI helper is unavailable');return filename;}
+function executable(){if(process.platform!=='win32'||!process.env.SystemRoot)throw new Error('Room key protection requires Windows');const filename=path.join(__dirname,'native','bin','windows-protection.exe');if(!fs.statSync(filename).isFile())throw new Error('Windows DPAPI helper is unavailable');return filename;}
 /** @param {'protect'|'unprotect'} operation @param {Buffer} input @returns {Promise<Buffer>} */
 function invoke(operation,input){
   if(input.length>MAX_BYTES+65536)throw new RangeError('Windows protection input exceeds its storage budget');
-  const child=spawn(executable(),['-NoLogo','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(__dirname,'windows-protection.ps1'),operation],{windowsHide:true,stdio:['pipe','pipe','pipe']});
+  const child=spawn(executable(),[operation],{windowsHide:true,stdio:['pipe','pipe','pipe']});
   return new Promise((resolve,reject)=>{
-    /** @type {Buffer[]} */const chunks=[];let bytes=0,errors='';
-    const timer=setTimeout(()=>{child.kill();reject(new Error('Windows DPAPI operation timed out'));},30000);
-    child.once('error',reject);child.stdin.once('error',reject);
-    child.stdout.on('data',(/** @type {Buffer} */chunk)=>{bytes+=chunk.length;if(bytes>8*1024*1024){child.kill();reject(new RangeError('Windows DPAPI response exceeds its storage budget'));}else chunks.push(chunk);});
+    /** @type {Buffer[]} */const chunks=[];let bytes=0,errors='',settled=false;
+    /** @param {Error} error @returns {void} */
+    function fail(error){
+      if(settled)return;
+      settled=true;clearTimeout(timer);child.kill();
+      for(const chunk of chunks)chunk.fill(0);
+      chunks.length=0;
+      reject(error);
+    }
+    const timer=setTimeout(()=>fail(new Error('Windows DPAPI operation timed out')),30000);
+    child.once('error',fail);child.stdin.once('error',fail);
+    child.stdout.on('data',(/** @type {Buffer} */chunk)=>{
+      bytes+=chunk.length;
+      if(settled){chunk.fill(0);return;}
+      if(bytes>MAX_BYTES+65536){chunk.fill(0);fail(new RangeError('Windows DPAPI response exceeds its storage budget'));}
+      else chunks.push(chunk);
+    });
     child.stderr.on('data',(/** @type {Buffer} */chunk)=>{errors=(errors+chunk.toString('utf8')).slice(0,8192);});
-    child.once('close',code=>{clearTimeout(timer);if(code!==0){reject(new Error('Windows DPAPI '+operation+' failed',{cause:new Error(JSON.stringify({exitCode:code,diagnostic:errors}))}));return;}const text=Buffer.concat(chunks).toString('ascii'),result=Buffer.from(text,'base64');if(result.length>MAX_BYTES+65536||result.toString('base64')!==text){reject(new TypeError('Windows DPAPI response has an invalid encoding'));return;}resolve(result);});
-    child.stdin.end(input.toString('base64'));
+    child.once('close',code=>{
+      if(settled)return;
+      if(code!==0){fail(new Error('Windows DPAPI '+operation+' failed',{cause:new Error(JSON.stringify({exitCode:code,diagnostic:errors}))}));return;}
+      settled=true;clearTimeout(timer);
+      const result=Buffer.concat(chunks);
+      for(const chunk of chunks)chunk.fill(0);
+      chunks.length=0;
+      resolve(result);
+    });
+    child.stdin.end(input);
   });
 }
 /** @returns {Promise<boolean>} */

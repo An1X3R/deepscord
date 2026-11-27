@@ -2,6 +2,7 @@
 'use strict';
 
 const fs = require('node:fs');
+const {createStaticAssets}=require('./static-assets.cjs');
 const path = require('node:path');
 const http = require('node:http');
 const net = require('node:net');
@@ -36,7 +37,7 @@ const { REPLICA_SESSION, encodeReplica, checkpointDigest, newerCheckpoint,create
 /** @typedef {{socket:LocalSocket,session:string,opened:boolean,pending:string[],pendingBytes:number,createdAt:number}} LocalLink */
 /** @typedef {{socket:WebSocket,peerId:string,session:string,createdAt:number}} BackendLink */
 /** @typedef {{kind:Kind,count:number,chunks:Buffer[],bytes:number,createdAt:number}} Assembly */
-/** @typedef {{data:Buffer,mime:string}} Asset */
+
 /** @typedef {import('../lib/steam-state.cjs').SteamCheckpoint} SteamCheckpoint */
 /** @typedef {import('./steam-continuity.cjs').ReplicaMessage} ReplicaMessage */
 /** @typedef {{ownerId:string,epoch:string,requestId:string,generation:number,candidate:SteamCheckpoint|null,failure:string|null,responders:Set<string>}} Recovery */
@@ -55,22 +56,6 @@ async function reservePort() {
   return address.port;
 }
 
-/** @param {string} directory @returns {Map<string,Asset>} */
-function readAssets(directory) {
-  /** @type {Map<string,Asset>} */ const assets = new Map();
-  /** @type {Record<string,string>} */ const mime = { '.mjs':'text/javascript; charset=utf-8','.wasm':'application/wasm','.avif':'image/avif','.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.woff2': 'font/woff2', '.wav': 'audio/wav' };
-  /** @param {string} current @returns {void} */
-  function read(current) {
-    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
-      const filename = path.join(current, entry.name);
-      if (entry.isDirectory()) read(filename);
-      else if (entry.isFile()) assets.set('/' + path.relative(directory, filename).split(path.sep).join('/'), { data: fs.readFileSync(filename), mime: mime[path.extname(filename)] || 'application/octet-stream' });
-      else throw new Error('Unexpected link in packaged Steam room assets');
-    }
-  }
-  read(directory);
-  return assets;
-}
 
 /** @param {Buffer} payload @returns {string} */
 function serverMessage(payload) {
@@ -89,6 +74,7 @@ class SteamRoomBridge {
   /** @type {SignalParser|null} */ parseSignal = null;
   /** @type {import('node:child_process').ChildProcess|null} */ backend = null;
   /** @type {http.Server|null} */ httpServer = null;
+  /** @type {ReturnType<typeof createStaticAssets>|null} */ assets = null;
   /** @type {SocketServer|null} */ sockets = null;
   /** @type {ReturnType<typeof setInterval>|null} */ timer = null;
   /** @type {Map<string,LocalLink>} */ localLinks = new Map();
@@ -277,7 +263,8 @@ class SteamRoomBridge {
     /** @type {typeof import('../public/js/network-protocol.js')} */
     const protocol = await import(pathToFileURL(path.join(this.paths.serverDirectory, 'public', 'js', 'network-protocol.js')).href);
     this.parseSignal = protocol.parsePeerSignal;
-    const assets = readAssets(path.join(this.paths.serverDirectory, 'public'));
+    const assets = createStaticAssets(path.join(this.paths.serverDirectory, 'public'));
+    this.assets = assets;
     /** @type {SocketModule} */ const module = require(path.join(this.paths.serverDirectory, 'lib', 'ws.js'));
     const sockets = new module.WebSocketServer({ maxConnections: 2 });
     this.sockets = sockets;
@@ -289,10 +276,7 @@ class SteamRoomBridge {
       try { pathname = decodeURIComponent(new URL(request.url || '/', this.origin).pathname); }
       catch (error) { response.writeHead(400); response.end(); return; }
       if (pathname === '/api/config') { response.setHeader('Content-Type', 'application/json'); response.end(JSON.stringify(PUBLIC_CONFIG)); return; }
-      const asset = assets.get(pathname === '/' ? '/index.html' : pathname);
-      if (!asset) { response.writeHead(404); response.end(); return; }
-      response.setHeader('Content-Type', asset.mime);
-      response.end(request.method === 'HEAD' ? undefined : asset.data);
+      void assets.serve(response,pathname,request.method || 'GET').catch(error=>{console.error('steam_asset_cleanup_failed',{message:error.message});response.destroy();});
     });
     this.httpServer = server;
     server.on('upgrade', (request, socket, head) => {
@@ -783,6 +767,8 @@ class SteamRoomBridge {
       if (this.sequence === sequence || this.replicaAcks.size > 0) console.warn('steam_final_replica_unconfirmed', { sequence: this.sequence, pendingPeers: this.replicaAcks.size });
     }
     this.stopping = true;
+    this.assets?.close();
+    this.assets = null;
     this.generation += 1;
     if (this.timer) clearInterval(this.timer);
     this.timer = null;

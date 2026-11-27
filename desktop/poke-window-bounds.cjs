@@ -25,7 +25,7 @@ function trackWindow(sourceId, changed) {
   const handle = windowHandle(sourceId);
   if (process.platform !== 'win32' || !process.env.SystemRoot) throw new Error('Native window poke requires Windows');
   const area = sourceId.endsWith(':1') ? 'client' : 'frame';
-  const child = spawn(path.join(process.env.SystemRoot, 'System32/WindowsPowerShell/v1.0/powershell.exe'), ['-NoLogo','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(__dirname,'poke-window-bounds.ps1'),'-WindowHandle',handle,'-CaptureArea',area,'-ParentProcessId',String(process.pid)], { windowsHide: true, stdio: ['ignore','pipe','pipe'] });
+  const child = spawn(path.join(__dirname, 'native/bin/poke-window-bounds.exe'), ['-WindowHandle',handle,'-CaptureArea',area,'-ParentProcessId',String(process.pid)], { windowsHide: true, stdio: ['ignore','pipe','pipe'] });
   const lines = createInterface({ input: child.stdout });
   /** @type {Electron.Rectangle|null} */ let latest = null;
   /** @type {Error|null} */ let failure = null;

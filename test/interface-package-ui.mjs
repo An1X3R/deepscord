@@ -25,7 +25,7 @@ function selection(name){
  const scheme=parseInterfaceScheme({...metadata,presentation:{html:content('html'),css:content('css'),script:content('script')}});
  return {scheme,values:parseSchemeValues(scheme,{})};
 }
-const industrial=selection('industrial-open'),constructivist=selection('constructivist-open');
+const industrial=selection('industrial-open'),constructivist=selection('constructivist-open'),lanart=selection('lanart-open');
 /** @type {JsonValue} */const standardInput=JSON.parse(fs.readFileSync(path.join(root,'public/customization/interfaces/industrial.json'),'utf8'));
 const standardScheme=parseInterfaceScheme(standardInput),standard={scheme:standardScheme,values:parseSchemeValues(standardScheme,{})};
 const backend=await launch(path.join(directory,'server'),{}),port=await reservePort();
@@ -54,8 +54,8 @@ try{
  assert.equal(await ui.eval('document.querySelectorAll("#deepscordThemeStyle").length'),1);
  assert.equal(await ui.eval('document.querySelector("iframe[sandbox]").getAttribute("sandbox")'),'allow-scripts');
  pass('Persisted HTML/CSS/script package automatically mounts seven original application hosts in an opaque script frame');
- for(const [theme,value] of [['industrial',industrial],['constructivist',constructivist]]){
-  if(theme==='constructivist'){await ui.eval('(()=>{const settings=JSON.parse(localStorage.getItem("echo.settings"));settings.interfaceSelection='+JSON.stringify(constructivist)+';localStorage.setItem("echo.settings",JSON.stringify(settings));})()');await ui.send('Page.reload',{ignoreCache:true});await ui.waitFor('window.echo?.getState().roomReady && !!window.echo.getState().selfKey',{timeout:15000,interval:50,label:'second persisted package restored in a fresh app document'});}
+ for(const [theme,value] of [['industrial',industrial],['constructivist',constructivist],['lanart',lanart]]){
+  if(theme!=='industrial'){await ui.eval('(()=>{const settings=JSON.parse(localStorage.getItem("echo.settings"));settings.interfaceSelection='+JSON.stringify(value)+';localStorage.setItem("echo.settings",JSON.stringify(settings));})()');await ui.send('Page.reload',{ignoreCache:true});await ui.waitFor('window.echo?.getState().roomReady && !!window.echo.getState().selfKey',{timeout:15000,interval:50,label:'persisted package restored in a fresh app document'});}
   await apply(ui,/** @type {Selection} */(value));await mounted(ui,/** @type {string} */(theme));await slots(ui);
   await ui.waitFor('document.getElementById('+JSON.stringify('theme-'+theme+'-server')+').textContent===document.getElementById("connectionServerName").textContent',{timeout:10000,interval:50,label:String(theme)+' script receives real server state'});
   const before=await ui.eval('document.getElementById('+JSON.stringify('theme-'+theme+'-count')+').textContent');
@@ -69,24 +69,33 @@ try{
    await ui.eval('new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
    if(width===390){
     if(theme==='industrial')await ui.waitFor('document.getElementById("interfaceChannelIndex").hidden===false',{timeout:5000,interval:50,label:'narrow native directory control visible'});
-    const directory=theme==='industrial'?'.theme-workstation-directory':'.theme-newspaper-directory';
+    const directory=theme==='industrial'?'.theme-workstation-directory':theme==='lanart'?'.theme-lanart-directory':'.theme-newspaper-directory';
     const covered='!!document.elementFromPoint(innerWidth/2,450)?.closest('+JSON.stringify(directory)+')';
     await ui.waitFor('!('+covered+')',{timeout:5000,interval:50,label:String(theme)+' narrow directory starts closed'});
-    await click(ui,theme==='industrial'?'interfaceChannelIndex':'theme-constructivist-directory');
+    await click(ui,theme==='industrial'?'interfaceChannelIndex':'theme-'+theme+'-directory');
     await ui.waitFor(covered,{timeout:5000,interval:50,label:String(theme)+' narrow directory opens through original or theme action'});
-    await click(ui,theme==='industrial'?'interfaceChannelIndex':'theme-constructivist-directory');
+    await click(ui,theme==='industrial'?'interfaceChannelIndex':'theme-'+theme+'-directory');
     await ui.waitFor('!('+covered+')',{timeout:5000,interval:50,label:String(theme)+' narrow directory closes'});
    }
    await ui.screenshot(path.join(output,String(theme)+'-'+width+'.png'));
   }
   await ui.send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
  }
- pass('Both authored scripts receive server names and live member counts and handle density actions at desktop and narrow widths');
+ pass('All three authored scripts receive server names and live member counts and handle density actions at desktop and narrow widths');
+ const nightColors=await ui.eval('Object.fromEntries(["--bg","--accent","--line","--line-2"].map(key=>[key,getComputedStyle(document.documentElement).getPropertyValue(key).trim()]))');
+ for(const mode of ['day','night']){
+  await click(ui,'theme-lanart-mode-toggle');
+  await ui.waitFor('document.getElementById("theme-lanart").dataset.artMode==='+JSON.stringify(mode),{timeout:5000,interval:50,label:'Lanart '+mode+' mode'});
+  await slots(ui);
+  await ui.screenshot(path.join(output,'lanart-'+mode+'.png'));
+ }
+ assert.deepEqual(await ui.eval('Object.fromEntries(["--bg","--accent","--line","--line-2"].map(key=>[key,getComputedStyle(document.documentElement).getPropertyValue(key).trim()]))'),nightColors,'Returning to night must restore the complete palette');
+ pass('Lanart day and night switches preserve application hosts and restore palette tokens');
  await apply(ui,industrial);await mounted(ui,'industrial');
  await ui.waitFor('document.getElementById("theme-industrial-server").textContent===document.getElementById("connectionServerName").textContent',{timeout:10000,interval:50,label:'script action bridge ready'});
  await click(ui,'theme-industrial-settings');
  await ui.waitFor('!!document.getElementById("profileName")',{timeout:5000,interval:50,label:'package settings action opens original settings flow'});
- await ui.eval('document.getElementById("audioSettingsDone").click()');
+ await ui.eval('document.getElementById("softwareSettingsDone").click()');
  await ui.waitFor('!document.querySelector(".modal-backdrop")',{timeout:5000,interval:50,label:'original settings closes'});
  pass('Theme action bridge opens the production settings flow');
  for(let cycle=0;cycle<5;cycle++){
@@ -116,7 +125,7 @@ try{
  pass('Reduced motion and clear authored script error reporting use the supported theme interface');
  await ui.send('Page.removeScriptToEvaluateOnNewDocument',{identifier:injected.identifier});
  await ui.send('Page.reload',{ignoreCache:true});
- await ui.waitFor('window.echo?.getState().roomReady && !!document.getElementById("theme-constructivist")',{timeout:15000,interval:50,label:'real persistent snapshot restores on a new app document'});
+ await ui.waitFor('window.echo?.getState().roomReady && !!document.getElementById("theme-lanart")',{timeout:15000,interval:50,label:'real persistent snapshot restores on a new app document'});
  assert.equal(await ui.eval('document.querySelectorAll("#deepscordThemeScript").length'),1);
  assert.equal(await ui.eval('document.querySelectorAll("#deepscordThemeStyle").length'),1);
  fs.writeFileSync(path.join(output,'report.json'),JSON.stringify({checks,errors,browserLog,serverLog:backend.output()},null,2));

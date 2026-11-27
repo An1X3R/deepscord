@@ -48,12 +48,17 @@ async function runElectron() {
   await app.whenReady();
   const main = new BrowserWindow({ show:false,webPreferences:{ preload:path.join(__dirname, 'preload.js'),contextIsolation:true,nodeIntegration:false } });
   await main.loadFile(path.join(__dirname, 'desktop-test-page.html'));
-  const defaults = initialSettings();
+  const defaults = { ...initialSettings(),deafenShortcut:'Control+Alt+Shift+F9' };
   const testShortcut = 'Control+Alt+Shift+F10';
   fs.writeFileSync(path.join(directory, 'desktop-settings.json'), JSON.stringify({ ...defaults,muteShortcut:testShortcut }));
   const features = createDesktopFeatures({ getWindow:() => main,userData:directory });
   try {
     assert.equal(defaults.muteShortcut, 'Control+Shift+M');
+    assert.equal(initialSettings().deafenShortcut, 'Control+Shift+D');
+    assert(globalShortcut.isRegistered(defaults.deafenShortcut));
+    const legacy = { muteShortcut:defaults.muteShortcut,overlay:{ enabled:false,locked:true,x:24,y:80,width:280,height:300,scale:1 } };
+    assert.deepEqual(desktopSettings(legacy), initialSettings());
+    assert.throws(() => desktopSettings({ ...defaults,deafenShortcut:'ctrl+shift+m' }), /different/);
     assert.deepEqual(desktopSettings(defaults), defaults);
     assert(globalShortcut.isRegistered(testShortcut));
     const throughIpc = await main.webContents.executeJavaScript('window.deepscord.getDesktopSettings()');
@@ -68,6 +73,12 @@ async function runElectron() {
     assert(globalShortcut.isRegistered(testShortcut));
     assert.equal(features.getSettings().muteShortcut, testShortcut);
     globalShortcut.unregister(occupied);
+    const deafenOccupied = 'Control+Alt+Shift+F8';
+    assert(globalShortcut.register(deafenOccupied, () => {}));
+    assert.throws(() => features.saveSettings({ ...defaults,muteShortcut:testShortcut,deafenShortcut:deafenOccupied }), /deafen/);
+    assert(globalShortcut.isRegistered(testShortcut));
+    assert(globalShortcut.isRegistered(defaults.deafenShortcut));
+    globalShortcut.unregister(deafenOccupied);
     const chosen = 'Control+Shift+F11';
     const changed = features.saveSettings({ ...defaults,muteShortcut:chosen,extra:'stripped',overlay:{ ...defaults.overlay,enabled:true,locked:false,x:-99999,y:99999 } });
     assert(!globalShortcut.isRegistered(testShortcut));
@@ -75,7 +86,9 @@ async function runElectron() {
     const area = screen.getDisplayMatching(changed.overlay).workArea;
     assert(changed.overlay.x >= area.x && changed.overlay.y >= area.y);
     assert(!('extra' in changed));
-    features.updateVoice({ connected:true,members:[{ id:'one',name:'清晰的人声',avatar:null,color:'#7ccfbd',speaking:true,muted:false },{ id:'two',name:'Muted',avatar:null,color:'#e0dbcd',speaking:false,muted:true }] });
+    features.saveSettings({ ...features.getSettings(),overlay:{ ...features.getSettings().overlay,showRadio:true } });
+    const avatar='data:image/jpeg;base64,'+fs.readFileSync(path.join(root,'test/fixtures/avatar-96.jpg')).toString('base64');
+    features.updateVoice({ connected:true,radioTitle:'本地电台 · 测试曲目',members:[{ id:'one',screen:true,name:'清晰的人声',avatar,color:'#7ccfbd',speaking:true,muted:false },{ id:'two',name:'Muted',avatar:null,color:'#e0dbcd',speaking:false,muted:true }] });
     const overlay = BrowserWindow.getAllWindows().find((window) => window !== main);
     assert(overlay);
     overlay.webContents.on('console-message', (event) => { if (event.level === 'error') console.error('overlay_renderer_error', { message:event.message }); });
@@ -85,6 +98,15 @@ async function runElectron() {
     assert.equal(await overlay.webContents.executeJavaScript('document.querySelectorAll("#members > li").length'), 2);
     assert.equal(await overlay.webContents.executeJavaScript('document.querySelector("#members > li.speaking").dataset.memberId'), 'one');
     assert.equal(await overlay.webContents.executeJavaScript('typeof window.deepscord'), 'undefined');
+    assert.equal(await overlay.webContents.executeJavaScript('document.getElementById("radio-title").textContent'), '本地电台 · 测试曲目');
+    assert.equal(await overlay.webContents.executeJavaScript('document.querySelectorAll(".screen-badge:not([hidden])").length'), 1);
+    await overlay.webContents.executeJavaScript('window.retainedRow=document.querySelector("#members > li");window.retainedAvatar=window.retainedRow.firstElementChild;');
+    features.updateVoiceDelta({connected:true,radioTitle:'Changed title',members:[{id:'one',speaking:false,muted:false,screen:false},{id:'two',speaking:true,muted:false,screen:true}]});
+    await overlay.webContents.executeJavaScript('new Promise(resolve=>requestAnimationFrame(resolve))');
+    assert.equal(await overlay.webContents.executeJavaScript('window.retainedRow===document.querySelector("#members > li") && window.retainedAvatar===window.retainedRow.firstElementChild'),true);
+    assert.equal(await overlay.webContents.executeJavaScript('document.querySelector("#members > li.speaking").dataset.memberId'),'two');
+    assert.throws(()=>features.updateVoiceDelta({connected:true,radioTitle:null,members:[]}),/snapshot/);
+    fs.writeFileSync(path.join(root, '.qa-tools', 'desktop-overlay-expanded.png'), (await overlay.webContents.capturePage()).toPNG());
     assert.equal(await overlay.webContents.executeJavaScript('typeof window.voiceOverlay.onState'), 'function');
     assert(overlay.isVisible());
     assert.equal(await overlay.webContents.executeJavaScript('document.getElementById("resize-grip").hidden'), false);
@@ -107,6 +129,12 @@ async function runElectron() {
     assert.equal(overlay.isFocusable(),false);
     main.show(); main.focus();
     await main.webContents.executeJavaScript('document.body.innerHTML = "<input id=focus-probe>"; document.getElementById("focus-probe").focus()');
+    const capture = await main.webContents.executeJavaScript('window.deepscord.beginShortcutCapture()');
+    assert(!globalShortcut.isRegistered(chosen));
+    assert(!globalShortcut.isRegistered(defaults.deafenShortcut));
+    await main.webContents.executeJavaScript(`window.deepscord.endShortcutCapture(${JSON.stringify(capture.id)})`);
+    assert(globalShortcut.isRegistered(chosen));
+    assert(globalShortcut.isRegistered(defaults.deafenShortcut));
     for (let tick = 0; tick < 12; tick += 1) {
       features.updateVoice({ connected:true,members:[{ id:'one',name:'Speaker',avatar:null,color:'#87d8ce',speaking:tick % 2 === 0,muted:false }] });
       await new Promise(resolve => setTimeout(resolve,100));

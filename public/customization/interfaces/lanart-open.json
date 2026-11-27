@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "id": "lanart-open",
+  "name": "Lanart · 测绘与星轨双模态",
+  "description": "源自 AnimaDocs 的双模态科学仪器界面：白昼「大地测绘地图册（钴蓝/纸白）」与暗夜「深空轨道观测台（赤红/炭黑）」，支持卫星锚点发射/着陆实时切换。",
+  "theme": {
+    "accent": "#245dcc",
+    "background": "charcoal",
+    "density": "comfortable",
+    "corners": "square"
+  },
+  "interfaceProfile": {
+    "version": 1,
+    "preset": "industrial",
+    "motion": "full",
+    "navigation": "rail",
+    "memberPanel": "expanded"
+  },
+  "options": [
+    {
+      "id": "content-spacing",
+      "label": "内容间距",
+      "type": "range",
+      "default": 14,
+      "min": 8,
+      "max": 24,
+      "step": 1,
+      "unit": "px",
+      "cssVariable": "--scheme-content-spacing"
+    },
+    {
+      "id": "title-scale",
+      "label": "标题比例",
+      "type": "range",
+      "default": 1.05,
+      "min": 0.8,
+      "max": 1.4,
+      "step": 0.05,
+      "unit": "",
+      "cssVariable": "--scheme-title-scale"
+    }
+  ],
+  "files": {
+    "html": "packages/lanart/layout.html",
+    "css": "packages/lanart/style.css",
+    "script": "packages/lanart/script.js"
+  }
+}

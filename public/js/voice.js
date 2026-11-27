@@ -35,12 +35,18 @@ function rms(analyser) {
     meterBuffers.set(analyser, data);
   }
   analyser.getFloatTimeDomainData(data);
-  let sum = 0;
-  for (let i = 0; i < data.length; i += 1) {
-    const v = data[i];
-    sum += v * v;
+  let maximum = 0;
+  // Keep the original 512-sample threshold sensitivity across the retained history.
+  for (let offset = 0; offset < data.length; offset += 512) {
+    let sum = 0;
+    const end = Math.min(offset + 512, data.length);
+    for (let index = offset; index < end; index += 1) {
+      const value = data[index];
+      sum += value * value;
+    }
+    maximum = Math.max(maximum, sum / (end - offset));
   }
-  return Math.sqrt(sum / data.length);
+  return Math.sqrt(maximum);
 }
 
 /** @param {number} level @returns {number} */
@@ -84,6 +90,8 @@ export class VoiceEngine {
     /** @type {MediaStreamTrack|null} */ this.outTrack = null;
     this.localLevel = 0;
     this.localDb = -100;
+    this.presentationActive = true;
+    this.localMeterActive = false;
     this.muted = false;
     this.serverMuted = false;
     /** @type {Set<string>} */ this.serverMutedPeers = new Set();
@@ -292,7 +300,7 @@ export class VoiceEngine {
 
   _startLoop() {
     this._stopLoop();
-    this._loop = setInterval(() => this._tick(), 10);
+    this._loop = setInterval(() => this._tick(), 32);
   }
 
   _stopLoop() {
@@ -304,14 +312,19 @@ export class VoiceEngine {
     const s = this.getSettings();
     const analyser = this.chain && this.chain.analyser;
     if (analyser) {
-      const level = rms(analyser);
+      const blocked = this.muted || this.serverMuted || this.deafened;
+      const analyse = this.localMeterActive || (s.mode !== 'ptt' && !blocked);
+      const level = analyse ? rms(analyser) : 0;
       this.localLevel = level;
       this.localDb = toDb(level);
 
       const now = performance.now();
       const mode = s.mode === 'ptt' ? 'ptt' : 'vad';
       let target;
-      if (mode === 'ptt') {
+      if (blocked) {
+        this.vadOpen = false;
+        target = false;
+      } else if (mode === 'ptt') {
         target = this.pttDown;
       } else {
         const thr = Number.isFinite(s.vadThreshold) ? s.vadThreshold : -42;
@@ -330,7 +343,8 @@ export class VoiceEngine {
       this._setGate(open);
     }
 
-    // 远程说话检测
+    if (!this.presentationActive) return;
+    // Remote metering serves visible presentation consumers only.
     for (const [userId, peer] of this.peers) {
       if (!peer.analyser) continue;
       const level = rms(peer.analyser);
@@ -341,6 +355,28 @@ export class VoiceEngine {
         peer.speaking = speaking;
         this._emit({ type: 'speaking', userId, speaking });
       }
+    }
+  }
+
+  /** @param {boolean} active @returns {void} */
+  setPresentationActive(active) {
+    if (this.presentationActive === active) return;
+    this.presentationActive = active;
+    if (active) this._tick();
+  }
+
+  /** @param {boolean} active @returns {void} */
+  setLocalMeterActive(active) {
+    if (this.localMeterActive === active) return;
+    this.localMeterActive = active;
+    this._tick();
+  }
+
+  /** @returns {void} */
+  enforceLinkPolicies() {
+    for (const peer of this.peers.values()) {
+      try { peer.link.enforceRoutePolicy(); }
+      catch (error) { this._emit({type:'error',message:error instanceof Error?error.message:String(error)}); }
     }
   }
 

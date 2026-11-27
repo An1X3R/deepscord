@@ -1,5 +1,5 @@
 // @ts-check
-import {parseChatMessage,parseAttachment,parseReactions,parseMediaMetadata,mediaHash,mediaInteger,MEDIA_LIMITS,MEDIA_ENCRYPTION_OVERHEAD} from './chat-protocol.js';
+import {parseChatMessage,mediaId,parseAttachment,parseReactions,parseMediaMetadata,mediaHash,mediaInteger,MEDIA_LIMITS,MEDIA_ENCRYPTION_OVERHEAD} from './chat-protocol.js';
 import {parseContentPolicy,parseContentMessage,contentKeyId,contentIdentity,mapContentAsset} from './content-protocol.js';
 /** @typedef {import('./chat-protocol.js').ChatMessage} ChatMessage */
 /** @typedef {import('./chat-protocol.js').MediaMetadata} MediaMetadata */
@@ -7,8 +7,8 @@ import {parseContentPolicy,parseContentMessage,contentKeyId,contentIdentity,mapC
 /** @typedef {import('./content-protocol.js').ContentPolicy} ContentPolicy */
 /** @typedef {import('./content-protocol.js').ContentAsset} ContentAsset */
 /** @typedef {import('./content-protocol.js').SealedMessage} SealedMessage */
-/** @typedef {{text:string,attachment?:import('./chat-protocol.js').Attachment,reactions?:import('./chat-protocol.js').Reaction[],reactionRevision?:number}} ContentBody */
-/** @typedef {{text:string,attachment?:import('./chat-protocol.js').Attachment,sealed?:SealedMessage}} OutgoingContent */
+/** @typedef {{text:string,replyToId?:string,attachment?:import('./chat-protocol.js').Attachment,reactions?:import('./chat-protocol.js').Reaction[],reactionRevision?:number}} ContentBody */
+/** @typedef {{text:string,replyToId?:string,attachment?:import('./chat-protocol.js').Attachment,sealed?:SealedMessage}} OutgoingContent */
 /** @typedef {{descriptor:import('../../lib/room-replica.cjs').RoomDescriptor,journal:import('../../lib/server-governance.cjs').GovernanceJournal,policy:ContentPolicy|null}} ContentInitialization */
 /** @typedef {{keyId:string,key:Uint8Array}} ScreenKey */
 /** @typedef {{keyId:string,keyHash:string,roomId:string,creatorKey:string}} PreparedContent */
@@ -17,7 +17,7 @@ import {parseContentPolicy,parseContentMessage,contentKeyId,contentIdentity,mapC
 /** @param {ContentBody} input @returns {ContentBody} */
 function body(input){
   if(typeof input.text!=='string'||input.text.length>2000||input.text.includes('\u0000'))throw new TypeError('Message content requires text of at most 2000 characters');
-  return {text:input.text,...(input.attachment?{attachment:parseAttachment(input.attachment)}:{}),...(input.reactions?{reactions:parseReactions(input.reactions)}:{}),...(input.reactionRevision===undefined?{}:{reactionRevision:mediaInteger(input.reactionRevision,'Content reaction revision',0,Number.MAX_SAFE_INTEGER)})};
+  return {text:input.text,...(input.replyToId===undefined?{}:{replyToId:mediaId(input.replyToId,'Reply message ID')}),...(input.attachment?{attachment:parseAttachment(input.attachment)}:{}),...(input.reactions?{reactions:parseReactions(input.reactions)}:{}),...(input.reactionRevision===undefined?{}:{reactionRevision:mediaInteger(input.reactionRevision,'Content reaction revision',0,Number.MAX_SAFE_INTEGER)})};
 }
 /** @param {Blob} blob @returns {Promise<string>} */
 async function encode(blob){

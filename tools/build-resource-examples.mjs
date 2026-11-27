@@ -8,7 +8,7 @@ import codec from '../lib/avif-codec.cjs';
 /** @typedef {import('../public/js/network-protocol.js').JsonValue} JsonValue */
 /** @typedef {import('../public/js/resource-pack.js').ResourcePackManifest} Manifest */
 /** @typedef {{packIds:string[],files:number,bytes:number}} ExampleReport */
-const themeNames=['industrial','constructivist'];
+const themeNames=['industrial','constructivist','lanart'];
 const interactionNames=['default-bomb','default-poop','playful-fist','dollar-wallet'];
 const guideNames=['RESOURCE_PACKS.md','interfaces/DEVELOPMENT.md','interactions/DEVELOPMENT.md'];
 export const resourceExampleFiles=Object.freeze([
@@ -52,11 +52,11 @@ export async function verifyResourceExamples(options){
   /** @param {string} current @returns {void} */
   function collect(current){for(const name of fs.readdirSync(current)){const filename=path.join(current,name),info=fs.lstatSync(filename);if(info.isSymbolicLink())throw new TypeError('Example resources must not contain links: '+filename);if(info.isDirectory())collect(filename);else{read(filename);found.push(path.relative(directory,filename).split(path.sep).join('/'));}}}
   collect(directory);
-  if(found.length!==resourceExampleFiles.length||found.some(file=>!resourceExampleFiles.includes(file)))throw new Error('Example resources must contain exactly the authored guides and four uninstalled packs');
+  if(found.length!==resourceExampleFiles.length||found.some(file=>!resourceExampleFiles.includes(file)))throw new Error('Example resources must contain exactly the authored guides and declared uninstalled packs');
   let bytes=0;
   for(const file of found){const data=read(path.join(directory,file));bytes+=data.length;if(!file.endsWith('.avif')){const text=data.toString('utf8');if(/(?<![a-z])[a-z]:[\\/]|\\\\[a-z0-9]/i.test(text)||/(?:^|[\s"'`(])\/(?:Users|home|mnt)\/[^/\s]+/m.test(text))throw new TypeError('Example resources contain a machine-specific path: '+file);}}
   /** @type {string[]} */const packIds=[];
-  for(const example of ['industrial-open','constructivist-open','interaction-examples','sticker-example']){
+  for(const example of [...themeNames.map(name=>name+'-open'),'interaction-examples','sticker-example']){
     options.signal.throwIfAborted();const base=path.join(directory,'examples',example),manifest=parseResourcePackManifest(json(path.join(base,'pack.json')));
     if(manifest.id!==example)throw new TypeError('Unexpected example pack identity: '+example);packIds.push(manifest.id);
     if(manifest.kind==='interfaces')for(const entry of manifest.entries){const name=example.slice(0,-'-open'.length);if(entry.file!==example+'.json')throw new TypeError('Example theme entry must reference its authored manifest');const scheme=authoredTheme(base,name);if(scheme.id!==manifest.id)throw new TypeError('Example theme pack must match its legacy scheme identity');}

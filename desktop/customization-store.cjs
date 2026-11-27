@@ -7,6 +7,8 @@ const {randomUUID}=require('node:crypto');
 const {parseInterfaceScheme}=require('./app-server/public/js/interface-scheme.js');
 /** @type {typeof import('../public/js/customization-protocol.js')} */
 const {parseCustomInteraction}=require('./app-server/public/js/customization-protocol.js');
+/** @type {typeof import('../public/js/resource-pack.js')} */
+const {parseResourcePackManifest}=require('./app-server/public/js/resource-pack.js');
 /** @typedef {'interfaces'|'interactions'} CustomizationKind */
 /** @typedef {import('../public/js/interface-scheme.js').InterfaceScheme} InterfaceScheme */
 /** @typedef {import('../public/js/network-protocol.js').JsonValue} JsonValue */
@@ -44,7 +46,7 @@ function createCustomizationStore(customizationRoot,bundledRoot){
   const root=customizationRoot;
   /** @type {Record<CustomizationKind,string[]>} */
   const templates={interfaces:['industrial.json','constructivist.json'],interactions:['default-bomb.json','default-poop.json','playful-fist.json','dollar-wallet.json']};
-  const themePackages=['industrial-open.json','constructivist-open.json',...['industrial','constructivist'].flatMap(name=>['layout.html','style.css','script.js'].map(file=>'packages/'+name+'/'+file))];
+  const themePackages=[{version:2,names:['industrial','constructivist']},{version:3,names:['lanart']}];
   /** @param {CustomizationKind} kind @returns {string} */
   function directory(kind){
     if(kind!=='interfaces'&&kind!=='interactions')throw new TypeError('Customization directory must be interfaces or interactions');
@@ -63,16 +65,25 @@ function createCustomizationStore(customizationRoot,bundledRoot){
       fs.writeFileSync(temporary,'1\n',{flag:'wx'});
       fs.renameSync(temporary,marker);
     }
-    if(kind==='interfaces'){
-      const packageMarker=path.join(target,'.seeded-v2');
-      if(fs.existsSync(packageMarker)){if(readFile(packageMarker).toString('utf8')!=='2\n')throw new TypeError('Invalid theme package initialization marker: '+packageMarker);}
+    if(kind==='interfaces')for(const group of themePackages){
+      const packageMarker=path.join(target,'.seeded-v'+group.version),markerValue=String(group.version)+'\n';
+      if(fs.existsSync(packageMarker)){if(readFile(packageMarker).toString('utf8')!==markerValue)throw new TypeError('Invalid theme package initialization marker: '+packageMarker);}
       else{
-        for(const name of themePackages){
+        for(const theme of group.names){
+          const installed=path.join(root,'packs',theme+'-open');
+          if(fs.existsSync(installed)){
+            requireDirectory(path.dirname(installed));requireDirectory(installed);
+            const pack=parseResourcePackManifest(/** @type {JsonValue} */(JSON.parse(readFile(path.join(installed,'pack.json')).toString('utf8'))));
+            if(pack.kind!=='interfaces'||pack.id!==theme+'-open')throw new TypeError('Installed theme package identity does not match its directory: '+installed);
+            continue;
+          }
+          for(const name of [theme+'-open.json',...['layout.html','style.css','script.js'].map(file=>'packages/'+theme+'/'+file)]){
           const segments=name.split('/'),from=path.join(source,...segments),to=path.join(target,...segments),data=readFile(from);let parent=target;
           for(const segment of segments.slice(0,-1)){parent=path.join(parent,segment);if(!fs.existsSync(parent))fs.mkdirSync(parent);requireDirectory(parent);}
           if(fs.existsSync(to))readFile(to);else fs.writeFileSync(to,data,{flag:'wx'});
+          }
         }
-        fs.writeFileSync(packageMarker,'2\n',{flag:'wx'});
+        fs.writeFileSync(packageMarker,markerValue,{flag:'wx'});
       }
     }
     const guide=path.join(target,'DEVELOPMENT.md'),data=readFile(path.join(source,'DEVELOPMENT.md'));

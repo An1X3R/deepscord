@@ -8,7 +8,9 @@ export class MicrophoneGraph {
     this.src = context.createMediaStreamSource(stream);
     this.gain = new GainNode(context, { gain: inputGain, channelCount: 1, channelCountMode: 'explicit' });
     this.gate = new GainNode(context, { gain: 0 });
-    this.analyser = new AnalyserNode(context, { fftSize: 512, smoothingTimeConstant: 0 });
+    // Retain at least 40 ms so the 32 ms VAD poll covers sounds between ticks.
+    const historySize = 2 ** Math.ceil(Math.log2(context.sampleRate * 0.04));
+    this.analyser = new AnalyserNode(context, { fftSize: historySize, smoothingTimeConstant: 0 });
     this.dest = new MediaStreamAudioDestinationNode(context, { channelCount: 1, channelCountMode: 'explicit' });
     this.monitor = new GainNode(context, { gain: monitorGain });
     this.src.connect(this.gain);

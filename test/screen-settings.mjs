@@ -83,7 +83,7 @@ async function desktopRoomPage(debug, browserUrl) {
 
 /** @param {Page} page @returns {Promise<void>} */
 async function openSettings(page) {
-  await page.eval("document.getElementById('railSettingsBtn').click()");
+  await page.eval("document.getElementById('voiceSettingsBtn').click()");
   await page.waitFor("!!document.getElementById('screenTransmissionSettings')", { timeout: 5000, interval: 100, label: 'integrated screen settings' });
   await page.waitFor("getComputedStyle(document.getElementById('modalRoot').lastElementChild).opacity==='1'", { timeout: 5000, interval: 100, label: 'actual modal entry finished' });
   await page.eval("Promise.all(document.getElementById('modalRoot').getAnimations({subtree:true}).map(animation=>animation.finished)).then(()=>true)");

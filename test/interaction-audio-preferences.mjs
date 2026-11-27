@@ -46,7 +46,7 @@ try {
   const scheme=parseInterfaceScheme(JSON.parse(fs.readFileSync(new URL('../public/customization/interfaces/constructivist.json',import.meta.url),'utf8')));
   store.saveSettings({...chosen,interfaceSelection:{scheme,values:{'content-spacing':20,'title-scale':1.2,ignored:true}}});
   const selected=createClientPreferences(directory).read().settings;
-  assert.deepEqual(selected?.interfaceSelection,{scheme,values:{'content-spacing':20,'title-scale':1.2}},'Scheme snapshot and canonical option values must survive an independent disk read');
+  assert.deepEqual(selected?.interfaceSelection,{scheme,values:{'content-spacing':20,'title-scale':1.2,'material-mode':'print','construction-rig':true}},'Scheme snapshot and canonical option values must survive an independent disk read');
   assert.deepEqual(selected?.localTheme,scheme.theme,'Saved scheme must supply its complete theme');
   assert.deepEqual(selected?.interfaceProfile,scheme.interfaceProfile,'Saved scheme must supply its complete interface structure');
   const openScheme=parseInterfaceScheme({...scheme,presentation:{html:'h'.repeat(128*1024),css:'c'.repeat(128*1024),script:'s'.repeat(128*1024)}});

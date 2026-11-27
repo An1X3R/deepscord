@@ -34,7 +34,7 @@ try{
   const memberKey=await ui.eval('window.echo.getState().selfKey');assert.equal(typeof memberKey,'string');
   current=await change(owner,actor,current,{type:'setDomainAdmin',domainId:'srv-main',memberKey,enabled:true});
   await ui.waitFor('document.querySelector("[data-create=voice]")?.disabled===false',{timeout:5000,interval:50,label:'domain admin channel permission'});
-  for(const name of ['industrial','constructivist','industrial-open','constructivist-open']){
+  for(const name of ['industrial','constructivist','industrial-open','constructivist-open','lanart-open']){
     const selection=name.endsWith('-open')?theme(name):(()=>{const scheme=parseInterfaceScheme(JSON.parse(fs.readFileSync(path.join(root,'public/customization/interfaces',name+'.json'),'utf8')));return{scheme,values:parseSchemeValues(scheme,{})};})();
     await ui.eval('(async()=>{const runtime=await import("/js/interface-scheme-runtime.js");runtime.applyInterfaceSelection('+JSON.stringify(selection)+');await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));})()');
     if(name==='constructivist')await ui.eval('document.getElementById("interfaceChannelIndex").click();Promise.all(document.getAnimations().map(animation=>animation.finished))');
@@ -56,7 +56,7 @@ try{
   assert.equal(await ui.eval('document.getElementById('+JSON.stringify(button)+')===window.retainedChannel && document.activeElement===window.retainedChannel'),true,'Unchanged channel node and focus survive state updates');
   await ui.eval('document.querySelector("[data-server-id=srv-night]").click();document.getElementById("channel-settings-ch-night-text").click()');
   assert.equal(await ui.eval('!!document.getElementById("channelShareMenuBtn") && !document.getElementById("channelEditMenuBtn")'),true,'Domain admin cannot edit another domain');
-  console.log('PASS channel actions, scoped permissions, capacity save, four themes, retained focus');
+  console.log('PASS channel actions, scoped permissions, capacity save, five themes, retained focus');
 }finally{
   owner?.socket.close();await closeChrome(port);page?.close();if(child.exitCode===null)child.kill();await stop(backend);
   assert(path.dirname(directory)===os.tmpdir() && path.basename(directory).startsWith('deepscord-channel-controls-'));fs.rmSync(directory,{recursive:true,force:true});

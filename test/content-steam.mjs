@@ -31,7 +31,8 @@ test('Steam command transport preserves normal encrypted chat and each history m
   assert.deepEqual(transport(plainHello),plainHello);
   const chat={t:'chat',channelId:'ch-text',requestId,text:'',sealed,attachment};
   assert.deepEqual(transport(chat),chat);
-  const plainChat={t:'chat',channelId:'ch-text',text:'Plain room remains compatible'};
+  assert.throws(()=>transport({...chat,replyToId:'prior-message'}),/Encrypted Steam chat/);
+  const plainChat={t:'chat',channelId:'ch-text',text:'Plain room remains compatible',replyToId:'prior-message'};
   assert.deepEqual(transport(plainChat),plainChat);
   const unsigned={version:/** @type {const} */(1),roomId,keyId:key.id,keyHash:contentDigest(key.key),ownerKey:memberKey,governanceRevision:0,assets:[{source:contentDigest(plain),asset}]};
   const policy=parseContentPolicy({...unsigned,signature:sign(null,Buffer.from(contentPolicyPayload(unsigned)),pair.privateKey).toString('base64url')});

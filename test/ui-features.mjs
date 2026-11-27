@@ -304,6 +304,8 @@ try {
   const doc = await ui.send('DOM.getDocument');
   const input = await ui.send('DOM.querySelector', { nodeId:doc.root.nodeId,selector:'#profileAvatarFile' });
   await ui.send('DOM.setFileInputFiles', { nodeId:input.nodeId,files:[avatar] });
+  await ui.waitFor("!!document.getElementById('avatarCropSave')", {timeout:5000,interval:100,label:'avatar crop confirmation'});
+  await ui.eval("document.getElementById('avatarCropSave').click()");
   await ui.waitFor("window.echo.getState().settings.avatar?.startsWith('data:image/')", { timeout:10000,interval:100,label:'uploaded avatar persisted' });
   const avatarDeadline=Date.now()+7000;
   let avatarPersisted=false;
@@ -333,7 +335,7 @@ try {
   assert(Array.isArray(targets));
   assert(targets.some((target) => target !== null && typeof target === 'object' && !Array.isArray(target) && typeof target.url === 'string' && target.url.endsWith('/voice-overlay.html')));
   pass('Desktop settings save uses actual IPC and creates live overlay');
-  await ui.eval("document.getElementById('audioSettingsDone').click()");
+  await ui.eval("document.getElementById('softwareSettingsDone').click()");
   await ui.waitFor("!document.querySelector('.modal-backdrop')", { timeout:3000,interval:100,label:'settings closed' });
   await ui.eval("document.querySelector('[data-testid=music-start]').click()");
   await ui.waitFor("!!document.querySelector('[data-testid=music-source-global]')", {timeout:10000,interval:100,label:'actual native audio process enumeration plus global source'});

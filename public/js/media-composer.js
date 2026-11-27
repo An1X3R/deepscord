@@ -1,7 +1,8 @@
 // @ts-check
 /** @typedef {import('./sticker-panel.js').MediaLease} MediaLease */
 /** @typedef {{kind:'image',name:string,sha256:string,width:number,height:number,animated:boolean,frames:number,durationMs:number,bytes:number,preview:MediaLease,payload:Blob}} PreparedImage */
-/** @typedef {{input:HTMLTextAreaElement,form:HTMLFormElement,host:HTMLElement,openStickers:()=>void,prepareImage:(file:File,signal:AbortSignal)=>Promise<PreparedImage>,sendImage:(image:PreparedImage,signal:AbortSignal)=>Promise<void>,reportError:(error:Error)=>void}} MediaComposerOptions */
+/** @typedef {{text:string,replyToId?:string}} ComposerContent */
+/** @typedef {{input:HTMLTextAreaElement,form:HTMLFormElement,host:HTMLElement,openStickers:()=>void,prepareImage:(file:File,signal:AbortSignal)=>Promise<PreparedImage>,sendImage:(image:PreparedImage,signal:AbortSignal,content:ComposerContent)=>Promise<void>,reportError:(error:Error)=>void}} MediaComposerOptions */
 /** @typedef {'idle'|'preparing'|'staged'|'sending'|'destroyed'} ComposerMediaPhase */
 
 /** @param {string} id @returns {HTMLButtonElement} */
@@ -65,11 +66,16 @@ export function createMediaComposer(options){
   }
   emoji.setAttribute('aria-expanded','false');emoji.addEventListener('click',options.openStickers,{signal:events.signal});upload.addEventListener('click',()=>picker.click(),{signal:events.signal});
   picker.addEventListener('change',()=>{const files=[...(picker.files ?? [])];picker.value='';if(files.length)void stageFiles(files);},{signal:events.signal});
-  send.addEventListener('click',async()=>{
-    if(phase!=='staged' || !prepared)return;phase='sending';send.disabled=true;const controller=new AbortController(),version=generation;operation=controller;status.textContent='正在发送图片…';status.setAttribute('role','status');
-    try{await options.sendImage(prepared,controller.signal);if(!controller.signal.aborted && version===generation)reset();}
-    catch(error){if(controller.signal.aborted)return;phase='staged';operation=null;send.disabled=false;report(error instanceof Error ? error : new Error(String(error)));}
-  },{signal:events.signal});
+  /** @param {ComposerContent} content @param {AbortSignal} signal @returns {Promise<void>} */
+  async function sendStaged(content,signal){
+    if(phase!=='staged'||!prepared||send.disabled)throw new Error('请等待图片准备完成后再发送');
+    signal.throwIfAborted();phase='sending';send.disabled=true;
+    const controller=new AbortController(),version=generation;operation=controller;
+    const combined=AbortSignal.any([signal,controller.signal]);status.textContent='正在发送图文…';status.setAttribute('role','status');
+    try{await options.sendImage(prepared,combined,content);combined.throwIfAborted();if(version===generation)reset();}
+    catch(error){if(version===generation&&phase==='sending'){phase='staged';operation=null;send.disabled=false;status.textContent=error instanceof Error?error.message:String(error);status.setAttribute('role','alert');}throw error;}
+  }
+  send.addEventListener('click',()=>options.form.requestSubmit(),{signal:events.signal});
   cancel.addEventListener('click',reset,{signal:events.signal});
   image.addEventListener('error',()=>{if(phase==='staged'){send.disabled=true;report(new Error('AVIF 预览无法解码，请取消后检查图片'));}},{signal:events.signal});
   options.input.addEventListener('paste',event=>{const files=[...(event.clipboardData?.files ?? [])].filter(isImage);if(!files.length)return;event.preventDefault();void stageFiles(files);},{signal:events.signal});
@@ -77,6 +83,11 @@ export function createMediaComposer(options){
   options.host.addEventListener('dragleave',event=>{if(event.relatedTarget instanceof Node && options.host.contains(event.relatedTarget))return;options.host.classList.remove('media-drop-active');},{signal:events.signal});
   options.host.addEventListener('drop',event=>{options.host.classList.remove('media-drop-active');const files=[...(event.dataTransfer?.files ?? [])].filter(isImage);if(!files.length)return;event.preventDefault();void stageFiles(files);},{signal:events.signal});
   /** @returns {void} */
+  function suspend(){
+    if(phase==='preparing'){reset();return;}
+    if(phase==='sending'){generation+=1;operation?.abort();operation=null;phase='staged';send.disabled=false;status.textContent='连接已中断，图片与草稿已保留；连接恢复后可重试';status.setAttribute('role','alert');}
+  }
+  /** @returns {void} */
   function destroy(){if(phase==='destroyed')return;reset();phase='destroyed';events.abort();preview.remove();picker.remove();}
-  return {stageFiles,cancel:()=>{if(phase!=='destroyed')reset();},destroy,getPhase:()=>phase};
+  return {stageFiles,sendStaged,suspend,cancel:()=>{if(phase!=='destroyed')reset();},destroy,getPhase:()=>phase};
 }

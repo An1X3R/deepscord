@@ -2,7 +2,7 @@
 
 /** @typedef {{sessionId:string,userId:string,requestId:string,approved:boolean}} PokeDecision */
 /** @typedef {{sessionId:string,requests:{userId:string,requestId:string,name:string}[],canApprove:boolean}} PokeRequests */
-/** @typedef {{beginScreenPokeSession:(value:{sessionId:string,sourceId:string})=>Promise<{desktopOverlay:boolean,reason:string|null}>,triggerScreenPokeOverlay:(value:{sessionId:string,eventId:string,fromUserId:string,nx:number,ny:number,combo:number,pokerName:string})=>Promise<void>,clearScreenPokeOverlay:(value:{sessionId:string})=>Promise<void>,endScreenPokeSession:(value:{sessionId:string})=>Promise<void>,updateScreenPokeRequests?:(value:PokeRequests)=>Promise<void>,onScreenPokeDecision?:(callback:(decision:PokeDecision)=>void)=>(()=>void)}} PokeBridge */
+/** @typedef {{beginScreenPokeSession:(value:{sessionId:string,sourceId:string})=>Promise<{desktopOverlay:boolean,reason:string|null}>,triggerScreenPokeOverlay:(value:{sessionId:string,eventId:string,fromUserId:string,nx:number,ny:number,combo:number,gesture:'point'|'middle',pokerName:string})=>Promise<void>,clearScreenPokeOverlay:(value:{sessionId:string})=>Promise<void>,endScreenPokeSession:(value:{sessionId:string})=>Promise<void>,updateScreenPokeRequests?:(value:PokeRequests)=>Promise<void>,onScreenPokeDecision?:(callback:(decision:PokeDecision)=>void)=>(()=>void)}} PokeBridge */
 /** @typedef {{getSession:()=>string|null,getState:()=>import('./screen-poke.js').PokeState,getName:(id:string)=>string,respond:(decision:PokeDecision)=>void,reportError:(error:Error)=>void,notify:(message:string)=>void}} DesktopPokeOptions */
 
 /** Serialize native lifecycle operations so an old clear cannot erase a new share.
@@ -76,7 +76,7 @@ export function createDesktopPoke(options) {
     void schedule(async () => {
       if (active !== hit.sessionId || options.getSession() !== hit.sessionId || performance.now() - receivedAt > 500) return;
       const desktop = bridge();
-      if (desktop) await desktop.triggerScreenPokeOverlay({ sessionId: hit.sessionId, eventId: hit.eventId, fromUserId: hit.fromUserId, nx: hit.nx, ny: hit.ny, combo: hit.combo, pokerName: options.getName(hit.fromUserId) });
+      if (desktop) await desktop.triggerScreenPokeOverlay({ sessionId: hit.sessionId, eventId: hit.eventId, fromUserId: hit.fromUserId, nx: hit.nx, ny: hit.ny, combo: hit.combo, gesture: hit.gesture, pokerName: options.getName(hit.fromUserId) });
     });
   }
   return { begin, sync, clear, show };

@@ -7,7 +7,7 @@ const nativeBounds = require('./poke-window-bounds.cjs');
 
 /** @typedef {import('../public/js/network-protocol.js').JsonValue} JsonValue */
 /** @typedef {{sessionId:string,sourceId:string}} BeginPoke */
-/** @typedef {{sessionId:string,eventId:string,fromUserId:string,nx:number,ny:number,combo:number,pokerName:string}} PokeHit */
+/** @typedef {{sessionId:string,eventId:string,fromUserId:string,nx:number,ny:number,combo:number,gesture?:'point'|'middle',pokerName:string}} PokeHit */
 /** @typedef {{owner:Electron.WebContents,sessionId:string,displayId:string|null,tracker:import('./poke-window-bounds.cjs').WindowTracker|null,window:Electron.BrowserWindow|null,ready:Promise<void>|null,loaded:boolean,epoch:number,events:Map<string,number>,rates:Map<string,{start:number,count:number}>,total:{start:number,count:number}}} PokeSession */
 /** @type {PokeSession|null} */ let current = null;
 
@@ -34,7 +34,8 @@ function parseHit(input) {
   if (typeof value.nx !== 'number' || !Number.isFinite(value.nx) || value.nx < 0 || value.nx > 1 || typeof value.ny !== 'number' || !Number.isFinite(value.ny) || value.ny < 0 || value.ny > 1) throw new TypeError('Poke coordinates must be finite numbers in [0,1]');
   if (typeof value.combo !== 'number' || !Number.isInteger(value.combo) || value.combo < 1 || value.combo > 10) throw new TypeError('Poke combo must be an integer in [1,10]');
   if (typeof value.pokerName !== 'string' || value.pokerName.length > 80 || /[\u0000-\u001f\u007f]/.test(value.pokerName)) throw new TypeError('Poke name must be text of at most 80 characters without control characters');
-  return { sessionId: identifier(value.sessionId, 'sessionId'), eventId: identifier(value.eventId, 'eventId'), fromUserId: identifier(value.fromUserId, 'fromUserId'), nx: value.nx, ny: value.ny, combo: value.combo, pokerName: value.pokerName };
+  if (value.gesture !== undefined && value.gesture !== 'point' && value.gesture !== 'middle') throw new TypeError('Poke gesture must be point or middle');
+  return { sessionId: identifier(value.sessionId, 'sessionId'), eventId: identifier(value.eventId, 'eventId'), fromUserId: identifier(value.fromUserId, 'fromUserId'), nx: value.nx, ny: value.ny, combo: value.combo, gesture: value.gesture === 'middle' ? 'middle' : 'point', pokerName: value.pokerName };
 }
 /** @param {Electron.DesktopCapturerSource} source @returns {Electron.Display|null} */
 function sourceDisplay(source) {

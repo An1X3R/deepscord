@@ -259,6 +259,20 @@ export class PeerLink {
     return this.lastStats;
   }
 
+  /** Enforce the active ICE routes independently of UI statistics collection.
+   * @returns {void} */
+  enforceRoutePolicy() {
+    if (this.closed || this.config.mediaPolicy !== 'direct') return;
+    const transports = new Set([this.pc.sctp?.transport,...this.pc.getSenders().map(sender=>sender.transport),...this.pc.getReceivers().map(receiver=>receiver.transport)]);
+    for (const transport of transports) {
+      const pair = transport?.iceTransport.getSelectedCandidatePair();
+      if (pair?.local.type === 'relay' || pair?.remote.type === 'relay') {
+        this.close();
+        throw new Error('检测到不符合直连策略的中继路径，连接已停止');
+      }
+    }
+  }
+
   /** @returns {void} */
   close() {
     if (this.closed) return;

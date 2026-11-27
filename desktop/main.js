@@ -27,6 +27,7 @@ const {openContentVault}=require('./content-vault.cjs');
 const {createContentService}=require('./content-service.cjs');
 const windowsProtection=require('./windows-protection.cjs');
 const {createClientPreferences}=require('./client-preferences.cjs');
+const {createChatUnreadStore}=require('./chat-unread-store.cjs');
 const {createCustomizationStore,readInterfaceFile}=require('./customization-store.cjs');
 const {resolveResourceRoot,initializePortableResources}=require('./resource-location.cjs');
 const {createResourcePackStore}=require('./resource-pack-store.cjs');
@@ -34,6 +35,7 @@ const {createResourceManager}=require('./resource-manager.cjs');
 const {openRoomCredentials}=require('./room-credentials.cjs');
 const {registerRadioMetadataIpc}=require('./radio-metadata.cjs');
 const {createRadioAccess}=require('./radio-access.cjs');
+const {registerNotificationSoundIpc}=require('./notification-sounds.cjs');
 const radioAccess=createRadioAccess();
 app.commandLine.appendSwitch('disable-features', 'WebRtcHideLocalIpsWithMdns');
 app.commandLine.appendSwitch('allow-loopback-in-peer-connection');
@@ -105,6 +107,7 @@ let contentVault = null;
 let contentService = null;
 function requireContentVault(){if(process.platform!=='win32')throw new Error('加密房间目前需要 Windows 客户端');if(!contentVault)contentVault=openContentVault({directory:app.getPath('userData'),protection:windowsProtection});return contentVault;}
 /** @type {ReturnType<typeof createClientPreferences>|null} */let clientPreferences=null;
+/** @type {ReturnType<typeof createChatUnreadStore>|null} */let chatUnread=null;
 /** @type {ReturnType<typeof createCustomizationStore>|null} */let customizationStore=null;
 /** @type {ReturnType<typeof createResourcePackStore>|null} */let resourcePacks=null;
 /** @type {ReturnType<typeof createResourceManager>|null} */let resourceManager=null;
@@ -265,7 +268,7 @@ function createWindow(initialUrl) {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      spellcheck: true,
+      spellcheck: false,
       backgroundThrottling: false,
       session: steamSession || directSession || serverSession || session.defaultSession,
     },
@@ -316,6 +319,7 @@ function createWindow(initialUrl) {
     }
   });
   win.webContents.on('render-process-gone', () => {
+    desktopFeatures?.resetVoice();
     capture.stopAllCapture().catch((error) => console.error('capture_crash_cleanup_failed', { message:error.message }));
   });
 
@@ -689,7 +693,14 @@ function setupIpc() {
   });
   ipcMain.handle('workspace:invited-channel',(event) => {activeWorkspaceEntry(event);return invitedChannelId;});
   const contentOperations={activate: 'activate',prepare:'prepare',signPolicy:'signPolicy',sealChat:'sealChat',openChat:'openChat',sealReaction:'sealReaction',sealMedia:'sealMedia',openMedia:'openMedia'};
+  ipcMain.handle('chat-unread:get',event=>{trustedRoomEntry(event);return chatUnread.read();});
+  ipcMain.handle('chat-unread:save',(event,input)=>{trustedRoomEntry(event);return chatUnread.save(input);});
   ipcMain.handle('preferences:get',event=>{trustedRoomEntry(event);return clientPreferences.read();});
+  ipcMain.handle('preferences:local-interface',event=>{
+    assertBootstrap(event);
+    const settings=clientPreferences.read().settings;
+    return settings ? {selection:settings.interfaceSelection,theme:settings.localTheme,profile:settings.interfaceProfile} : null;
+  });
   ipcMain.handle('customization:server-interactions',async(event,roomId)=>{trustedRoomEntry(event);const entry=requireWorkspace().get(activeWorkspaceEntry(event));if(!entry||entry.roomId!==roomId)throw new Error('互动目录仅可读取当前服务器');return {...customizationStore.interactionDirectory(roomId),...await resourcePacks.interactionDrafts(roomId)};});
   ipcMain.handle('customization:interfaces',async event=>{trustedRoomEntry(event);return {directory:customizationStore.directory('interfaces'),schemes:await resourcePacks.interfaceSchemes()};});
   ipcMain.handle('customization:interaction-asset',async(event,input)=>{
@@ -703,6 +714,7 @@ function setupIpc() {
     if(error)throw new Error('Cannot open customization directory '+directory+': '+error);
   });
   registerRadioMetadataIpc({ipcMain,assertSender:trustedRoomEntry,access:radioAccess});
+  registerNotificationSoundIpc({ipcMain,dialog,directory:app.getPath('userData'),assertSender:trustedRoomEntry});
   ipcMain.handle('preferences:settings',(event,input)=>{trustedRoomEntry(event);clientPreferences.saveSettings(input);});
   ipcMain.handle('preferences:channel',(event,input)=>{trustedRoomEntry(event);clientPreferences.saveLastChannel(input);});
   ipcMain.handle('room-password:get',async event=>{trustedRoomEntry(event);return serverConnection?(await requireRoomCredentials()).read(serverConnection.origin):null;});
@@ -1036,6 +1048,7 @@ if (!app.requestSingleInstanceLock()) {
     serverTrust=createServerTrust({storePath:path.join(app.getPath('userData'),'server-trust.json'),timeoutMs:8000,logger:{warn:(message,fields)=>console.warn(message,fields)},requestConsent:details=>desktopConsent.confirm({title:'核对服务器证书',message:'这是服务器自己的证书。请通过其他可信渠道与服主核对指纹；确认后只信任这一张证书，证书变化将阻止连接。',details:[{label:'服务器',value:details.origin},{label:'SHA-256 指纹',value:details.fingerprint.match(/.{1,2}/g).join(':')},{label:'证书名称',value:details.subject},{label:'签发者',value:details.issuer},{label:'有效期',value:details.validFrom+' — '+details.validTo}],acceptLabel:'指纹一致，信任此证书'},AbortSignal.timeout(120000))});
     workspace=createWorkspaceStore(app.getPath('userData'));
     clientPreferences=createClientPreferences(app.getPath('userData'));
+    chatUnread=createChatUnreadStore(app.getPath('userData'));
     resourceRoot=resolveResourceRoot({executable:process.execPath,developmentDirectory:path.dirname(__dirname),packaged:app.isPackaged,override:process.env.DEEPSCORD_RESOURCE_ROOT??(process.env.DEEPSCORD_USER_DATA?path.join(app.getPath('userData'),'mods'):null)});
     initializePortableResources({root:resourceRoot,legacyUserData:app.getPath('userData')});
     const bundledCustomization=path.join(__dirname,'app-server','public','customization');
@@ -1070,6 +1083,7 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   let captureQuitComplete = false;
+  let unreadQuitComplete = false;
   let captureShutdown = null;
   app.on('before-quit', (event) => {
     quitting = true;
@@ -1106,6 +1120,14 @@ if (!app.requestSingleInstanceLock()) {
         roomShutdown = null;
         dialog.showErrorBox('房间未能停止', error.message);
         quitting = false;
+      });
+      return;
+    }
+    if (chatUnread && !unreadQuitComplete) {
+      event.preventDefault();
+      chatUnread.close().then(() => {unreadQuitComplete=true;app.quit();}).catch(error => {
+        quitting=false;
+        dialog.showErrorBox('未读状态未能保存',error.message);
       });
     }
   });

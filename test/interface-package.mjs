@@ -22,8 +22,8 @@ assert.throws(()=>parseInterfaceScheme({...original,files:{html:'a.html',css:'a.
 const temporary=fs.mkdtempSync(path.join(os.tmpdir(),'deepscord-interface-package-'));
 try{
   const store=createCustomizationStore(path.join(temporary,'customization'),bundled),initial=store.listInterfaceSchemes();
-  assert.equal(initial.schemes.length,4);
-  for(const id of ['industrial-open','constructivist-open']){
+  assert.equal(initial.schemes.length,5);
+  for(const id of ['industrial-open','constructivist-open','lanart-open']){
     const scheme=initial.schemes.find(entry=>entry.id===id);assert(scheme?.presentation?.html&&scheme.presentation.css&&scheme.presentation.script);
     assert.equal(Object.hasOwn(scheme,'files'),false,'Disk paths must not enter a runtime snapshot');
   }
@@ -51,7 +51,7 @@ try{
   fs.unlinkSync(customContent);createCustomizationStore(path.join(temporary,'customization'),bundled).directory('interfaces');assert.equal(fs.existsSync(customContent),false,'Deleted package assets must not be resurrected');
   const legacy=path.join(temporary,'legacy'),legacyInterfaces=path.join(legacy,'customization/interfaces');fs.mkdirSync(legacyInterfaces,{recursive:true});fs.writeFileSync(path.join(legacyInterfaces,'.seeded-v1'),'1\n');
   fs.writeFileSync(path.join(legacyInterfaces,'industrial-open.json'),JSON.stringify({...original,id:'industrial-open',name:'Existing user package'}));
-  const upgraded=createCustomizationStore(path.join(legacy,'customization'),bundled).listInterfaceSchemes();assert.equal(upgraded.schemes.length,2);assert.equal(upgraded.schemes.find(entry=>entry.id==='industrial-open')?.name,'Existing user package','V2 upgrade must preserve existing user manifests');assert.equal(fs.existsSync(path.join(legacyInterfaces,'industrial.json')),false,'V2 package upgrade must not restore deleted V1 templates');
+  const upgraded=createCustomizationStore(path.join(legacy,'customization'),bundled).listInterfaceSchemes();assert.equal(upgraded.schemes.length,3);assert.equal(upgraded.schemes.find(entry=>entry.id==='industrial-open')?.name,'Existing user package','V2 upgrade must preserve existing user manifests');assert.equal(fs.existsSync(path.join(legacyInterfaces,'industrial.json')),false,'V2 package upgrade must not restore deleted V1 templates');
   console.log(JSON.stringify({event:'interface-package-passed',realDisk:true,hydratedSnapshot:true,boundedUtf8:true,pathContainment:true,junctionRejected:true,noResurrection:true,legacyUpgradePreservesFiles:true}));
 }finally{
   const resolved=path.resolve(temporary);assert.equal(path.dirname(resolved),path.resolve(os.tmpdir()));assert(path.basename(resolved).startsWith('deepscord-interface-package-'));fs.rmSync(resolved,{recursive:true,force:true});

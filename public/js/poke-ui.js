@@ -4,7 +4,7 @@ import { createPokeMarker, getVideoContentRect } from './poke-visual.js';
 /** @typedef {import('./screen-poke.js').PokeState} PokeState */
 /** @typedef {import('./screen-poke.js').PokeHit} PokeHit */
 /** @typedef {{enabled:boolean,volume:number}} PokeAudioState */
-/** @typedef {{getState:()=>PokeState,request:(id:string)=>void,respond:(id:string,requestId:string,approved:boolean)=>void,revoke:(id:string)=>void,revokeAll:()=>void,hit:(id:string,nx:number,ny:number,boom:boolean)=>void,getName:(id:string)=>string,getAudio:()=>PokeAudioState,setAudio:(state:PokeAudioState)=>void}} PokeCallbacks */
+/** @typedef {{getState:()=>PokeState,request:(id:string)=>void,respond:(id:string,requestId:string,approved:boolean)=>void,revoke:(id:string)=>void,revokeAll:()=>void,hit:(id:string,nx:number,ny:number,boom:boolean)=>void,getName:(id:string)=>string,getFunnyGestures:()=>boolean,setFunnyGestures:(allowed:boolean)=>void,getAudio:()=>PokeAudioState,setAudio:(state:PokeAudioState)=>void}} PokeCallbacks */
 /** @typedef {{shell:HTMLDivElement,video:HTMLVideoElement,local:boolean}} PokeView */
 
 /** @param {string} label @param {string} testId @returns {HTMLButtonElement} */
@@ -25,6 +25,16 @@ export function createPokeUI(callbacks, toolbar) {
   const nativeRequests = typeof (/** @type {Window & {deepscord?:{updateScreenPokeRequests?:(input:object)=>Promise<void>}}} */ (window).deepscord?.updateScreenPokeRequests) === 'function';
   const grants = document.createElement('div'); grants.className = 'poke-grants';
   const revokeAll = control('全部收回', 'poke-revoke-all'); revokeAll.addEventListener('click', callbacks.revokeAll);
+  const funnyGestures = control('', 'poke-funny-gestures');
+  const gesturePreference = localStorage.getItem('deepscord.poke.funnyGestures');
+  if (gesturePreference !== null && gesturePreference !== 'true' && gesturePreference !== 'false') throw new TypeError('Stored screen poke gesture preference must be true or false');
+  let allowFunnyGestures = gesturePreference !== 'false';
+  funnyGestures.addEventListener('click', () => {
+    const allowed = !callbacks.getFunnyGestures();
+    allowFunnyGestures = allowed;
+    localStorage.setItem('deepscord.poke.funnyGestures', String(allowed));
+    callbacks.setFunnyGestures(allowed); reconcile();
+  });
   const receive = control('', 'poke-audio-toggle');
   const audioLabel = document.createElement('label'); audioLabel.className = 'poke-audio-volume';
   const audioText = document.createElement('span');
@@ -32,7 +42,7 @@ export function createPokeUI(callbacks, toolbar) {
   volume.dataset.testid = 'poke-audio-volume'; volume.setAttribute('aria-label', '接收指点音效音量');
   receive.addEventListener('click', () => { const audio = callbacks.getAudio(); callbacks.setAudio({ enabled: !audio.enabled, volume: audio.volume }); reconcile(); });
   volume.addEventListener('input', () => { callbacks.setAudio({ enabled: callbacks.getAudio().enabled, volume: Number(volume.value) }); reconcile(); });
-  audioLabel.append(audioText, volume); panel.append(receive, audioLabel, grants, revokeAll); toolbar.append(panel);
+  audioLabel.append(audioText, volume); panel.append(funnyGestures, receive, audioLabel, grants, revokeAll); toolbar.append(panel);
   /** @type {Map<string,{view:PokeView,controls:HTMLSpanElement,request:HTMLButtonElement,mode:HTMLButtonElement,sound:HTMLButtonElement,layer:HTMLDivElement,active:boolean,boom:boolean,expanded:boolean,sessionId:string|null,markers:Map<string,{node:HTMLDivElement,timer:ReturnType<typeof setTimeout>}>,click:(event:MouseEvent)=>void}>} */
   const views = new Map();
   let permissionSignature = '';
@@ -76,6 +86,9 @@ export function createPokeUI(callbacks, toolbar) {
     if (panel.parentElement !== toolbar) toolbar.append(panel);
     if (!requests.isConnected) document.body.append(requests);
     const state = callbacks.getState(); const audio = callbacks.getAudio();
+    if (callbacks.getFunnyGestures() !== allowFunnyGestures) callbacks.setFunnyGestures(allowFunnyGestures);
+    funnyGestures.hidden = state.sessionId === null;
+    funnyGestures.textContent = `允许整活手势: ${callbacks.getFunnyGestures() ? '开' : '关'}`; funnyGestures.setAttribute('aria-pressed', String(callbacks.getFunnyGestures()));
     receive.textContent = `接收指点音效: ${audio.enabled ? '开' : '关'}`; receive.setAttribute('aria-pressed', String(audio.enabled));
     volume.value = String(audio.volume); volume.disabled = !audio.enabled; audioText.textContent = `音量 ${audio.volume}%`;
     const signature = JSON.stringify({ sessionId: state.sessionId, requests: state.requests, authorized: state.authorized, names: [...state.requests, ...state.authorized].map(item => callbacks.getName(item.userId)) });

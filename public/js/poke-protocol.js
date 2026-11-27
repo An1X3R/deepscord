@@ -2,7 +2,7 @@
 
 /** @typedef {import('./network-protocol.js').JsonValue} JsonValue */
 /** @typedef {{version:1,sessionId:string|null}} PokeAdvertisement */
-/** @typedef {{action:'watch',sessionId:string,watching:boolean}|{action:'request'|'cancel',sessionId:string,requestId:string}|{action:'response',sessionId:string,requestId:string,grantId:string|null}|{action:'revoke',sessionId:string,grantId:string}|{action:'hit',sessionId:string,grantId:string,seq:number,nx:number,ny:number,boom:boolean}|{action:'event',sessionId:string,fromUserId:string,grantId:string,seq:number,nx:number,ny:number,combo:number,boom:boolean}} PokeMessage */
+/** @typedef {{action:'watch',sessionId:string,watching:boolean}|{action:'request'|'cancel',sessionId:string,requestId:string}|{action:'response',sessionId:string,requestId:string,grantId:string|null}|{action:'revoke',sessionId:string,grantId:string}|{action:'hit',sessionId:string,grantId:string,seq:number,nx:number,ny:number,boom:boolean}|{action:'event',sessionId:string,fromUserId:string,grantId:string,seq:number,nx:number,ny:number,combo:number,boom:boolean,gesture:'point'|'middle'}} PokeMessage */
 
 /** @param {JsonValue|undefined} value @returns {{[key:string]:JsonValue}} */
 function object(value) {
@@ -44,6 +44,7 @@ export function parsePokeMessage(value) {
   const grantId = id(input.grantId);
   const seq = integer(input.seq, Number.MAX_SAFE_INTEGER);
   if (input.action === 'hit') return { action: 'hit', sessionId, grantId, seq, ...point };
-  if (input.action === 'event') return { action: 'event', sessionId, grantId, seq, fromUserId: id(input.fromUserId), combo: integer(input.combo, 10), ...point };
+  if (input.action === 'event' && input.gesture !== undefined && input.gesture !== 'point' && input.gesture !== 'middle') throw new TypeError('Invalid screen poke gesture');
+  if (input.action === 'event') return { action: 'event', sessionId, grantId, seq, fromUserId: id(input.fromUserId), combo: integer(input.combo, 10), gesture: input.gesture === 'middle' ? 'middle' : 'point', ...point };
   throw new TypeError('Unsupported screen poke action');
 }

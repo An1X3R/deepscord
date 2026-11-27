@@ -36,7 +36,7 @@ try{
   await page.send('Page.addScriptToEvaluateOnNewDocument',{source:"if(!localStorage.getItem('echo.settings'))localStorage.setItem('echo.settings',JSON.stringify({name:'界面源客户端',sounds:false}));"});
   await page.send('Page.navigate',{url:origin});
   await page.waitFor("window.echo?.getState().connStatus==='open' && !!window.echo.getState().selfKey",{timeout:15000,interval:100,label:'Source connected'});
-  await page.eval("document.getElementById('serverMenuBtn').click();document.getElementById('themeCustomizationMenuBtn').click();true");
+  await page.eval("(async()=>{await window.echo.actions.openSettings();document.getElementById('themeCustomizationMenuBtn').click();return true;})()");
   await page.waitFor("!!document.getElementById('customizationInterfacePreset')",{timeout:5000,interval:50,label:'Source interface panel'});
   check('industrial palette controls are editable',await page.eval("!document.getElementById('customizationAccent').disabled&&!document.getElementById('customizationBackground').disabled"));
   await page.eval("(()=>{for(const [id,value]of [['customizationAccent','#55aaff'],['customizationBackground','slate'],['customizationDensity','compact'],['customizationCorners','soft']]){const element=document.getElementById(id);element.value=value;element.dispatchEvent(new Event('change'));}const preset=document.getElementById('customizationInterfacePreset');preset.value='constructivist';preset.dispatchEvent(new Event('change'));for(const[id,value]of [['customizationInterfaceMotion','reduced'],['customizationInterfaceNavigation','rail'],['customizationInterfaceMembers','expanded']]){const element=document.getElementById(id);element.value=value;element.dispatchEvent(new Event('change'));}return true;})()");
@@ -60,7 +60,7 @@ try{
   await secondPage.send('Page.addScriptToEvaluateOnNewDocument',{source:"if(!localStorage.getItem('echo.settings'))localStorage.setItem('echo.settings',JSON.stringify({name:'界面目标客户端',sounds:false}));"});
   await secondPage.send('Page.navigate',{url:origin});
   await secondPage.waitFor("window.echo?.getState().connStatus==='open' && !!window.echo.getState().selfKey",{timeout:15000,interval:100,label:'Destination connected'});
-  await secondPage.eval("document.getElementById('serverMenuBtn').click();document.getElementById('themeCustomizationMenuBtn').click();true");
+  await secondPage.eval("(async()=>{await window.echo.actions.openSettings();document.getElementById('themeCustomizationMenuBtn').click();return true;})()");
   await secondPage.waitFor("!!document.getElementById('customizationInterfaceImport')",{timeout:5000,interval:50,label:'Destination file input'});
   const documentNode=await secondPage.send('DOM.getDocument');
   const inputNode=await secondPage.send('DOM.querySelector',{nodeId:documentNode.root.nodeId,selector:'#customizationInterfaceImport'});

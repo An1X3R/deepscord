@@ -102,7 +102,7 @@ export function openContentSettings(options){
         const message=parseChatMessage(entry.message),attachment=message.attachment?mapAttachment(message.attachment,replacements):null;
         const reactions=message.reactions?.map(reaction=>reaction.kind==='server'?{...reaction,asset:replacement(reaction.asset,replacements)}:reaction);
         const requestId=await migrationRequest(message.id);
-        const sealed=await options.content.sealMigrationMessage(channelId,requestId,{text:message.text,...(attachment?{attachment}:{}),...(reactions?{reactions:parseReactions(reactions)}:{}),...(message.reactionRevision===undefined?{}:{reactionRevision:message.reactionRevision})});signal.throwIfAborted();
+        const sealed=await options.content.sealMigrationMessage(channelId,requestId,{text:message.text,...(message.replyToId===undefined?{}:{replyToId:message.replyToId}),...(attachment?{attachment}:{}),...(reactions?{reactions:parseReactions(reactions)}:{}),...(message.reactionRevision===undefined?{}:{reactionRevision:message.reactionRevision})});signal.throwIfAborted();
         const result=mediaObject(await options.client.call({t:'contentRequest',op:'replace',migrationId,channelId,messageId:message.id,sealed,...(attachment?{attachment:{...attachment,name:'encrypted.avif'}}:{})},signal),'加密历史暂存结果');
         if(result.replaced!==index+1 || result.count!==count)throw new TypeError('服务器历史暂存进度与当前条目不一致');
         progress.value=sources.length+index+1;

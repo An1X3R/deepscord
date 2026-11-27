@@ -60,7 +60,7 @@ async function attachRoom(debug){
 /** @param {Page} page @param {string} id @returns {Promise<void>} */
 async function click(page,id){await page.eval(`(()=>{const node=document.getElementById(${JSON.stringify(id)});if(!node)throw new Error('Missing stable ID: '+${JSON.stringify(id)});node.click();})()`);}
 /** @param {Page} page @returns {Promise<void>} */
-async function openPanel(page){await click(page,'serverMenuBtn');await click(page,'themeCustomizationMenuBtn');await page.waitFor("!!document.getElementById('customizationInterfacePreset')&&!document.getElementById('customizationThemeSave').disabled",{timeout:7000,interval:50,label:'native scheme panel'});}
+async function openPanel(page){await page.eval('window.echo.actions.openSettings()');await click(page,'themeCustomizationMenuBtn');await page.waitFor("!!document.getElementById('customizationInterfacePreset')&&!document.getElementById('customizationThemeSave').disabled",{timeout:7000,interval:50,label:'native scheme panel'});}
 /** @param {Page} page @returns {Promise<JsonValue>} */
 async function communication(page){return page.eval('(()=>{const s=window.echo.getState();return {selfId:s.selfId,selfKey:s.selfKey,activeServerId:s.activeServerId,activeChannelId:s.activeChannelId,servers:s.servers.map(server=>({id:server.id,channels:server.channels.map(channel=>({id:channel.id,type:channel.type}))})),roomReady:s.roomReady,connStatus:s.connStatus};})()');}
 const before=manifest(packageDirectory);fs.writeFileSync(path.join(output,'package-before.json'),JSON.stringify(before,null,2));
@@ -90,12 +90,12 @@ try{
     check('actual-explorer-target-'+kind,found);
     observations.push({directoryKind:kind,explorer:explorer('capture')});
     check('latest-guide-byte-identical-'+kind,fs.readFileSync(guide).equals(fs.readFileSync(path.join(server,'public/customization',kind,'DEVELOPMENT.md'))));
-    check('no-legacy-guide-modal-'+kind,await page.eval("!document.getElementById('developerGuideContent')&&!!document.getElementById('audioSettingsDone')"));
+    check('no-legacy-guide-modal-'+kind,await page.eval("!document.getElementById('developerGuideContent')&&!!document.getElementById('softwareSettingsDone')"));
   }
   await page.eval("document.getElementById('developerGuide-interfaces').scrollIntoView({block:'center',behavior:'instant'})");
   await page.screenshot(path.join(output,'settings-directory-links.png'));
   assert.deepEqual(await communication(page),connection,'Directory guide actions must preserve communication state');checks.push('guide-actions-preserve-communication');
-  await click(page,'audioSettingsDone');await openPanel(page);
+  await click(page,'softwareSettingsDone');await openPanel(page);
   observations.push({closedSettingsExplorerWindows:explorer('close')});
   await click(page,'customizationInterfacePreset');await click(page,'customizationSchemeDirectory');
   await page.waitFor("document.getElementById('customizationSchemeStatus')?.dataset.state==='saved'",{timeout:5000,interval:50,label:'scheme plus opens directory'});

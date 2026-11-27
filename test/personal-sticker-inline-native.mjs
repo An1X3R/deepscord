@@ -157,7 +157,7 @@ try{
 
  await departingClick(finalPicker,'personalStickerPickerCloseBtn');await disposed();
  pass('Deletion removes the private index entry and final local AVIF while reopening remains empty');
- await ui.eval("document.getElementById('serverMenuBtn').click();document.getElementById('themeCustomizationMenuBtn').click()");
+ await ui.eval("(async()=>{await window.echo.actions.openSettings();document.getElementById('themeCustomizationMenuBtn').click();})()");
  await ui.waitFor("!!document.getElementById('customizationInterfacePreset') && !document.getElementById('customizationThemeSave').disabled",{timeout:10000,interval:50,label:'actual packaged local theme catalog loaded'});
  await ui.eval("document.getElementById('customizationInterfacePreset').click()");
  const option=await ui.eval("document.querySelector('#customizationInterfacePresetList [data-value=constructivist-open]')?.id");assert.equal(typeof option,'string','Packaged customization catalog must contain the full constructivist theme');

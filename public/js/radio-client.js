@@ -4,7 +4,7 @@ import {openRadioPanel} from './radio-ui.js';
 import {parseRadioState,currentRadioStation} from './radio-protocol.js';
 import {mediaObject,mediaId} from './chat-protocol.js';
 /** @typedef {import('./network-protocol.js').JsonValue} JsonValue */
-/** @typedef {{getListeningChannel:()=>string|null,getContext:(id:string)=>import('./radio-ui.js').RadioContext|null,getOutput:()=>import('./radio-player.js').RadioOutput,getVolume:()=>number,saveVolume:(volume:number)=>void,send:(frame:Record<string,JsonValue>)=>boolean,modal:(options:import('./radio-ui.js').ModalOptions)=>{close:()=>void},metadataBridge:import('./radio-player.js').RadioMetadataBridge|null,reportError:(error:Error)=>void,notify:(message:string)=>void}} RadioClientOptions */
+/** @typedef {{getListeningChannel:()=>string|null,getContext:(id:string)=>import('./radio-ui.js').RadioContext|null,getOutput:()=>import('./radio-player.js').RadioOutput,getVolume:()=>number,saveVolume:(volume:number)=>void,send:(frame:Record<string,JsonValue>)=>boolean,modal:(options:import('./radio-ui.js').ModalOptions)=>{close:()=>void},metadataBridge:import('./radio-player.js').RadioMetadataBridge|null,reportError:(error:Error)=>void,notify:(message:string)=>void,onOverlayChange?:()=>void}} RadioClientOptions */
 
 /** @param {RadioClientOptions} options */
 export function createRadioClient(options) {
@@ -49,6 +49,7 @@ export function createRadioClient(options) {
   }
   /** @returns {void} */
   function render() {
+    options.onOverlayChange?.();
     if(!initialized || !strip || !track || !manage || !retry)return;
     const channelId=options.getListeningChannel(),context=channelId?options.getContext(channelId):null;
     strip.hidden=!context;
@@ -111,5 +112,12 @@ export function createRadioClient(options) {
   }
   /** @returns {void} */
   function dispose() {disconnect();observer.disconnect();void player.dispose().catch(options.reportError);}
-  return {refresh,refreshOutput,open,receive,disconnect,dispose};
+  /** @returns {string|null} */
+  function getOverlayTitle() {
+    const channelId=options.getListeningChannel(),context=channelId?options.getContext(channelId):null;
+    if(!context)return null;
+    const name=metadata.stationName || currentRadioStation(context.radio).name;
+    return (metadata.trackTitle?`${name} — ${metadata.trackTitle}`:name).slice(0,240);
+  }
+  return {refresh,refreshOutput,open,receive,disconnect,dispose,getOverlayTitle};
 }

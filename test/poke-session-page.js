@@ -87,6 +87,7 @@ export async function run() {
       poke: { getState: point.poke.state, request: point.poke.request,
         respond: (id, requestId, approved) => { if (approved) point.poke.approve(id, requestId); else point.poke.reject(id, requestId); },
         revoke: point.poke.revoke, revokeAll: point.poke.revokeAll, hit: point.poke.hit, getName: id => id.toUpperCase(),
+        getFunnyGestures: () => point.poke.state().allowFunnyGestures, setFunnyGestures: point.poke.setFunnyGestures,
         getAudio: () => point.audio, setAudio: audio => { point.audio = audio; },
       },
     });
@@ -166,6 +167,13 @@ export async function run() {
     await until('muted sender click reaches owner', () => a.hits.length === 2);
     check('sender-boom-toggle-is-independent-of-receiver', !a.hits[1].boom && a.audio.enabled && b.audio.enabled);
     for (let index = 2; index <= 11; index += 1) { await frame(40); b.poke.hit('a', .5, .5, false); await until(`canonical combo ${index + 1}`, () => a.hits.length === index + 1); }
+    await until('all watcher gesture echoes arrive', () => [b,c,d,e].every(point => point.hits.length === a.hits.length));
+    check('host-selects-one-gesture-for-all-watchers', [b,c,d,e].every(point => point.hits.every((hit,index) => hit.gesture === a.hits[index].gesture)));
+    check('cold-combos-always-use-point', a.hits.filter(hit => hit.combo < 5).every(hit => hit.gesture === 'point'));
+    const gestureToggle = button(ownerToolbar, 'poke-funny-gestures'); gestureToggle.click();
+    check('host-can-disable-funny-gestures', !a.poke.state().allowFunnyGestures && localStorage.getItem('deepscord.poke.funnyGestures') === 'false');
+    gestureToggle.click();
+    check('host-can-enable-funny-gestures', a.poke.state().allowFunnyGestures && localStorage.getItem('deepscord.poke.funnyGestures') === 'true');
     check('owner-computes-combo-and-caps-at-ten', a.hits.map(hit => hit.combo).join(',') === '1,2,3,4,5,6,7,8,9,10,10,10');
     const previousRate = a.poke.stats().rateLimited;
     for (let index = 0; index < 8; index += 1) b.poke.hit('a', .5, .5, false);
@@ -204,13 +212,17 @@ export async function run() {
     a.links.get('e')?.sendControl({ type: 'media', screen: true, accompaniment: false });
     await until('legacy-media-clears-optional-capability', () => e.poke.state().peers.some(peer => peer.userId === 'a' && !peer.supported));
     check('legacy-media-remains-safe', parsePeerControl('{"type":"media","screen":true,"accompaniment":false}', 'direct').type === 'media');
+    const legacyEvent = parsePokeMessage({action:'event',sessionId:'x',grantId:'g',seq:1,nx:.5,ny:.5,boom:false,fromUserId:'b',combo:5});
+    check('legacy-event-defaults-to-point', legacyEvent.action === 'event' && legacyEvent.gesture === 'point');
+    const middleEvent = parsePokeMessage({action:'event',sessionId:'x',grantId:'g',seq:2,nx:.5,ny:.5,boom:false,fromUserId:'b',combo:8,gesture:'middle'});
+    check('middle-event-survives-protocol-parser', middleEvent.action === 'event' && middleEvent.gesture === 'middle');
     let malformed = 0;
     /** @type {import('../public/js/network-protocol.js').JsonValue[]} */
-    const malformedPackets = [null, {}, { action: 'hit', sessionId: 'x', grantId: 'g', seq: 1, nx: 1.01, ny: .5, boom: false }, { action: 'event', sessionId: 'x', grantId: 'g', seq: 1, nx: .5, ny: .5, boom: true, fromUserId: 'b', combo: 11 }, { action: 'request', sessionId: 'x', requestId: '' }];
+    const malformedPackets = [null, {}, { action: 'hit', sessionId: 'x', grantId: 'g', seq: 1, nx: 1.01, ny: .5, boom: false }, { action: 'event', sessionId: 'x', grantId: 'g', seq: 1, nx: .5, ny: .5, boom: true, fromUserId: 'b', combo: 11 }, { action: 'request', sessionId: 'x', requestId: '' }, {action:'event',sessionId:'x',grantId:'g',seq:2,nx:.5,ny:.5,boom:false,fromUserId:'b',combo:8,gesture:'wave'}];
     for (const value of malformedPackets) {
       try { parsePokeMessage(value); } catch (error) { assert(error instanceof TypeError, 'Malformed packet had incorrect failure type'); malformed += 1; }
     }
-    check('malformed-poke-messages-fail-explicitly', malformed === 5);
+    check('malformed-poke-messages-fail-explicitly', malformed === 6);
     const receiveButton = button(ownerToolbar, 'poke-audio-toggle'); receiveButton.click();
     const audioSlider = ownerToolbar.querySelector('[data-testid="poke-audio-volume"]'); assert(audioSlider instanceof HTMLInputElement, 'Missing receiver volume');
     check('receiver-audio-toggle-is-independent', !a.audio.enabled && b.audio.enabled && audioSlider.disabled);

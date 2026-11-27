@@ -41,6 +41,7 @@ mods/
 | --- | --- |
 | `examples/industrial-open/` | 工程站开放主题清单及完整 HTML、CSS、JS |
 | `examples/constructivist-open/` | 构成报刊开放主题清单及完整 HTML、CSS、JS |
+| `examples/lanart-open/` | Lanart 白昼测绘／暗夜轨道主题清单及完整 HTML、CSS、JS |
 | `examples/interaction-examples/` | 炸弹、便便、轻轻捶你、收点小费四份互动定义 |
 | `examples/sticker-example/` | 由原创几何图形生成的小型 AVIF 图片表情及清单，无个人图片 |
 

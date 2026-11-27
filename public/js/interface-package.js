@@ -4,7 +4,7 @@
 /** @typedef {{serverName:string,channelName:string,connected:boolean,memberCount:number}} ThemeState */
 /** @typedef {'settings'|'toggleMic'|'toggleDeafen'|'serverMenu'|'toggleMembers'} ThemeCommand */
 const slots={rail:'#serverRail',sidebar:'.sidebar',topbar:'.topbar',radio:'#radioStrip',content:'.main > .content',members:'#members',self:'#selfPanel'};
-const baseVariables=['--bg','--bg-side','--bg-rail','--bg-elev','--bg-elev2','--bg-input','--accent','--accent-2','--accent-ink','--accent-soft','--accent-glow','--radius'];
+export const baseVariables=['--bg','--bg-side','--bg-rail','--bg-elev','--bg-elev2','--bg-input','--accent','--accent-2','--accent-ink','--accent-soft','--accent-glow','--radius'];
 /** @type {{presentation:Presentation,dispose:()=>void,sync:()=>void,publish:(state:ThemeState)=>void}|null} */let active=null;
 /** @type {ThemeState} */let snapshot={serverName:'',channelName:'',connected:false,memberCount:0};
 /** @type {(command:ThemeCommand)=>void} */let runCommand=()=>{throw new Error('Theme command handler is not initialized');};
@@ -17,7 +17,7 @@ export function interfacePackageMatches(presentation){return !!active&&!!present
 /** @returns {void} */
 export function clearInterfacePackage(){active?.dispose();active=null;}
 /** @param {string} value @returns {void} */
-function validateCss(value){
+export function validateCss(value){
   const canonical=value.replace(/\/\*[\s\S]*?\*\//g,'').replace(/\\([0-9a-f]{1,6})\s?|\\([^\r\n])/gi,(_match,hex,letter)=>hex?String.fromCodePoint(parseInt(hex,16)):letter);
   if(/@import\b|expression\s*\(|image-set\s*\(|src\s*\(|-moz-binding|behavior\s*:/i.test(canonical))throw new TypeError('Theme styles cannot import external code or stylesheets');
   for(const match of canonical.matchAll(/url\s*\(\s*([\s\S]*?)\s*\)/gi)){

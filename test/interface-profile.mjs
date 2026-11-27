@@ -37,7 +37,7 @@ try{
   await page.eval("(async()=>{window.interfaceTestModule=await import('./js/interface-profile.js');window.interfaceOriginalNodes=['app','voiceStage','stageGrid','audioSinks','chat','selfPanel'].map(id=>document.getElementById(id));return true;})()");
   check('industrial baseline has stationary rail',await page.eval("document.documentElement.dataset.interfacePreset==='industrial' && getComputedStyle(document.getElementById('serverRail')).flexDirection==='column'"));
   await page.screenshot(path.join(output,'industrial-wide.png'));
-  await page.eval("document.getElementById('serverMenuBtn').click();true");
+  await page.eval('window.echo.actions.openSettings()');
   await page.eval("document.getElementById('themeCustomizationMenuBtn').click();true");
   await page.waitFor("!!document.querySelector('#customizationInterfacePresetList [data-value=constructivist]')&&!document.getElementById('customizationThemeSave').disabled",{timeout:5000,interval:50,label:'Local interface settings'});
   await page.eval("document.getElementById('customizationInterfacePreset').click();document.querySelector('#customizationInterfacePresetList [data-value=constructivist]').click();document.getElementById('customizationThemeSave').click();true");

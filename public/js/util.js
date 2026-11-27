@@ -119,19 +119,27 @@ export function relTime(ts) {
   return `${Math.floor(diff / 86_400_000)} 天前`;
 }
 
-/** 轻量文本渲染：先转义，再支持少量 Markdown 与链接 */
+/** Render a small Markdown subset while preserving literal code contents.
+ * @param {string} text
+ * @returns {string}
+ */
 export function renderText(text) {
-  let html = esc(text);
-  html = html.replace(/```([\s\S]*?)```/g, (_, code) => `<pre><code>${code}</code></pre>`);
-  html = html.replace(/`([^`\n]+)`/g, '<code>$1</code>');
-  html = html.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
-  html = html.replace(/~~([^~\n]+)~~/g, '<del>$1</del>');
-  html = html.replace(
-    /(https?:\/\/[^\s<"）)]+)/g,
-    (url) => `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`
-  );
-  html = html.replace(/\n/g, '<br>');
+  const plain = (/** @type {string} */ value) => esc(value)
+    .replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>')
+    .replace(/~~([^~\n]+)~~/g, '<del>$1</del>')
+    .replace(/(https?:\/\/[^\s<"）)]+)/g, url => `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`)
+    .replace(/\n/g, '<br>');
+  let html = '', offset = 0;
+  for (const match of text.matchAll(/```([\s\S]*?)```|`([^`\n]+)`/g)) {
+    html += plain(text.slice(offset, match.index));
+    if (match[1] !== undefined) {
+      const code = match[1].replace(/^[A-Za-z0-9_+.-]+[ \t]*\r?\n/, '');
+      html += `<pre><code>${esc(code)}</code></pre>`;
+    } else html += `<code>${esc(match[2])}</code>`;
+    offset = match.index + match[0].length;
+  }
+  html += plain(text.slice(offset));
   return html;
 }
 

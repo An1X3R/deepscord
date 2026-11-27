@@ -1,6 +1,12 @@
 # Deepscord 界面方案开发指南
 
-核对日期：2026-11-09。本文独立说明当前接口，不需要聊天上下文。源码路径均从含 package.json 的仓库根目录算起。
+核对日期为 2026-11-12。本文独立说明当前接口，不需要聊天上下文。源码路径均从含 package.json 的仓库根目录算起。
+
+## 本地服务器选择页
+
+启动工作区和创建、加入服务器窗口会在显示前读取本机保存的界面方案、参数及 CSS。基础方案沿用 `interface.css` 的配色，开放主题加载保存的 `presentation.css`，同时设置 `data-interface-package="true"`。方案参数仍通过 `--scheme-*` 生效。
+
+CSS 可用 `:root[data-interface-surface="workspace"]` 定位服务器选择页，用 `:root[data-interface-surface="connections"]` 定位创建与加入窗口。主要容器为 `.workspace`、`.workspace-rail`、`.workspace-sidebar`、`.workspace-main` 和 `.connection-panel`。这些页面的按钮、表单和状态提示使用主题的 `--bg-*`、`--text-*`、`--accent*`、`--line*`、`--radius` 变量。房间内的 HTML 布局与隔离 JavaScript 接口继续在房间界面运行。修改主题后在自定义设置中重新选择并保存，即可更新本机保存的方案快照。
 
 ## 安装、更新与随软件保存
 
@@ -9,6 +15,8 @@
 共用包格式、目录、安全边界和限额见 [资源包协议](../RESOURCE_PACKS.md)。该协议随客户端放在 `mods/RESOURCE_PACKS.md`，本指南位于 `mods/interfaces/DEVELOPMENT.md`。
 
 频道插槽中的每行结构为 `.channel-row[data-channel-row]`，内部 `.channel[data-channel-id]` 与 `.channel-settings[data-channel-settings]` 是并列按钮。右侧按钮承载频道设置与分享，至少保留 28×28 像素的可点击区域，使用主题变量着色；不要将其嵌入频道按钮或用覆盖层挡住。列表会按稳定 ID 保留节点，样式不要依赖成员或频道是容器的第几个直接子节点。
+
+头像裁剪属于主程序弹窗：`#avatarCropEditor`、`.avatar-crop-frame`、`.avatar-crop-zoom` 可通过主题 CSS 调整外观，操作、JPEG 压缩和保存由主程序保管；保留窄窗口下的缩放与确认按钮。`#railSettingsBtn` 与主题的 `command("settings")` 打开“软件设置”（`#softwareSettingsPanel`）；`#voiceSettingsBtn` 打开独立的“语音与共享设置”（`#voiceSettingsPanel`），请保留各自用途与无障碍标签。主题若自带软件设置按钮，应隐藏自身布局中的 `.rail-settings`，避免重复入口。软件设置内的 `#themeCustomizationMenuBtn` 打开本机界面自定义，其下提供 `#notificationJoinSoundMenuBtn`、`#notificationLeaveSoundMenuBtn` 和 `#notificationResetSoundsMenuBtn`。域菜单不再放置这些本机偏好。它们打开系统音频文件选择窗口，提示音是独立的本机偏好，不属于服务器权限或主题资源，不会因切换主题而被替换。
 
 权限、删除、加密迁移及密钥分享的最终确认不开放给主题：Windows 使用主进程控制的独立本机窗口，网页端使用浏览器原生确认。主题可以设计入口，但不能伪造确认通过、接触签名私钥或覆盖确认窗口。
 
@@ -21,9 +29,9 @@
 
 资源默认随 EXE 放在同级 `mods` 目录，源码开发使用仓库根 `mods`。显式绝对路径 `DEEPSCORD_RESOURCE_ROOT` 优先；测试或专用配置只设置 `DEEPSCORD_USER_DATA` 时使用该目录的 `mods` 隔离资源，正常无覆盖配置仍随 EXE。旧 AppData 自定义资源只在升级时复制、校验并迁移一次，旧文件留作备份；迁移完成后读取和安装不再依赖旧路径。软件目录不可写时明确报错，请将软件放在可写位置；不会暗中改存系统盘。
 
-本仓库的两套开放主题是 **“工程站·开放主题”** 和 **“构成报刊·开放主题”**；它们与“工程站 · 低动效”“构成主义索引”等参数方案是不同条目。开发时分别参考 `industrial-open.json` 与 `packages/industrial/`、`constructivist-open.json` 与 `packages/constructivist/`，为分发目录添加共用协议规定的 `pack.json`，保留清单中的相对文件关系，再作为 ZIP 或文件夹安装。
+本仓库的三套开放主题是 **“工程站·开放主题”**、**“构成报刊·开放主题”** 和 **“Lanart · 测绘与星轨双模态”**；它们与“工程站 · 低动效”“构成主义索引”等参数方案是不同条目。开发时分别参考 `industrial-open.json` 与 `packages/industrial/`、`constructivist-open.json` 与 `packages/constructivist/`、`lanart-open.json` 与 `packages/lanart/`，为分发目录添加共用协议规定的 `pack.json`，保留清单中的相对文件关系，再作为 ZIP 或文件夹安装。
 
-发布 ZIP 已将两套完整主题打包在 `mods/examples/industrial-open/` 和 `mods/examples/constructivist-open/`，可直接复制修改或在资源管理逐个安装文件夹。示例尚未安装，不含个人登记与服务器绑定；制作新主题时同时修改包 ID 和方案 ID，分享 ZIP 时让 `pack.json` 位于第一层。
+发布 ZIP 将三套完整主题打包在 `mods/examples/industrial-open/`、`mods/examples/constructivist-open/` 和 `mods/examples/lanart-open/`，可直接复制修改或在资源管理逐个安装文件夹。示例包不含个人登记与服务器绑定；对应默认方案会在首次初始化时登记，之后主动删除的方案不会重新出现。制作新主题时同时修改包 ID 和方案 ID，分享 ZIP 时让 `pack.json` 位于第一层。
 
 1. 打开资源管理并安装完整包。相同包 ID 再次安装用于更新；安装结果以资源管理显示为准。
 2. 返回“本机界面自定义”，重新展开列表，选择对应开放主题，预览后点“保存界面方案”。**更新当前主题后也必须重新选择并保存，才能替换旧内容快照。**
@@ -218,16 +226,17 @@ theme.animate('theme-demo-name', [
 
 脚本抛错、未处理的 Promise 拒绝或桥接校验失败会关闭脚本通道、移除脚本 iframe、取消其活动动画并提示错误；已建立的布局和原应用节点保留，不宣称脚本继续运行。重新应用或退出主题才重建或清理该运行时。取消预览、切换主题和清空方案时撤销监听、关闭通道、恢复原节点与变量。
 
-## 两套可直接编辑的完整例子
+## 三套可直接编辑的完整例子
 
-复制一套清单及对应内容目录，修改清单 `id`、`name` 与 `files`，即可做自己的主题。别只复制 HTML 丢下 CSS 或脚本；三项路径必须与新目录一致。下面两套均是作者编写的产品设计，不代表复刻了其他产品的原始动效。
+复制一套清单及对应内容目录，修改清单 `id`、`name` 与 `files`，即可做自己的主题。别只复制 HTML 丢下 CSS 或脚本；三项路径必须与新目录一致。下面三套均是作者编写的产品设计，不代表复刻了其他产品的原始动效。
 
 | 清单与内容目录 | 可编辑位置与实际行为 |
 | --- | --- |
 | `industrial-open.json`；`packages/industrial/{layout.html,style.css,script.js}` | HTML 使用 `theme-workstation` 结构组织工作台、频道、成员和底部自己的控制。CSS 中修改背景、强调色、网格列宽和间距。脚本将状态写入 `theme-industrial-server/channel/status/count`；“紧凑排布”按钮修改自有 `data-density`、`aria-pressed` 和 `--theme-workstation-density`，“设置”按钮发起 `command('settings')` |
 | `constructivist-open.json`；`packages/constructivist/{layout.html,style.css,script.js}` | HTML 使用 `theme-newspaper` 组织报头、目录、阅读区与成员栏。CSS 中修改纸色、红黑强调、标题比例、网格布局和窄屏规则。脚本通过 `data-directory` 展开目录、通过 `data-density` 切换排印密度；频道名称变化时播放 220ms 标题进入动画，“设置”通过同一命令桥打开 |
+| `lanart-open.json`；`packages/lanart/{layout.html,style.css,script.js}` | HTML 保留七个原生功能插槽，CSS 提供白昼测绘与暗夜轨道布局；脚本切换 `data-art-mode` 并完整恢复两套色彩变量，也提供窄屏目录、紧凑排布及原生软件设置入口。新增业务功能由插槽内的主程序提供，勿复制旧版业务控件 |
 
-两套脚本的密度与目录展开状态是本次主题运行时内的局部状态，不会自动持久保存；需要可保存参数时在清单 `options` 声明，并通过相应 CSS 变量设计样式。先修改 HTML 自有元素，再同步调整脚本的 `theme-*` ID；删除脚本仍引用的元素会明确报错。保留七个插槽并检查窄屏、减少动效、切换频道、预览取消与重新打开主题后的行为。
+这些脚本的密度、目录展开及 Lanart 的昼夜模式是本次主题运行时内的局部状态，不会自动持久保存；需要可保存参数时在清单 `options` 声明，并通过相应 CSS 变量设计样式。先修改 HTML 自有元素，再同步调整脚本的 `theme-*` ID；删除脚本仍引用的元素会明确报错。保留七个插槽并检查窄屏、减少动效、切换频道、预览取消与重新打开主题后的行为。
 
 ## 实际开发接口
 

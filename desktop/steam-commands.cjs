@@ -245,12 +245,13 @@ function cleanCommand(input) {
     }
     case 'chat': {
       const text=requiredString(input,'text',MAX_TEXT_LENGTH),sealed=input.sealed===undefined?null:parseContentMessage(input.sealed);
-      if(sealed&&(text!==''||input.requestId===undefined))throw new TypeError('Encrypted Steam chat requires an explicit request ID and empty outer text');
+      if(sealed&&(text!==''||input.requestId===undefined||input.replyToId!==undefined))throw new TypeError('Encrypted Steam chat requires an explicit request ID and empty outer text');
       return {
         t: 'chat',
         channelId: requiredIdentifier(input, 'channelId'),
         text,
         ...(sealed?{sealed}:{}),
+        ...(input.replyToId===undefined?{}:{replyToId:mediaId(input.replyToId,'Reply message ID')}),
         ...(input.attachment===undefined ? {} : {attachment:sealed?encryptedAttachment(input.attachment):parseAttachment(input.attachment)}),
         ...(input.requestId===undefined ? {} : {requestId:sealed ? mediaId(input.requestId,'Encrypted chat request') : requiredIdentifier(input,'requestId')}),
       };

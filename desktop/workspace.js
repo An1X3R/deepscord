@@ -1,4 +1,5 @@
 // @ts-check
+import {loadLocalInterface} from './local-interface.js';
 
 /** @typedef {import('../public/js/network-protocol.js').JsonValue} JsonValue */
 /** @typedef {{[key:string]:JsonValue}} JsonObject */
@@ -91,6 +92,7 @@ function parseActionOutcome(value) {
 
 /** @param {WorkspaceApi} api @returns {Promise<void>} */
 async function startWorkspace(api) {
+  await loadLocalInterface(/** @type {WorkspaceApi & import('./local-interface.js').LocalInterfaceApi} */ (api));
   /** @type {WorkspaceSnapshot} */ let snapshot = { entries: [], activeEntryId: null };
   /** @type {string|null} */ let selectedId = null;
   let busy = false;
@@ -244,6 +246,7 @@ async function startWorkspace(api) {
 
 const desktopApi = /** @type {Window & {deepscord?:WorkspaceApi}} */ (window).deepscord;
 if (!desktopApi) {
+  document.documentElement.dataset.localInterface='ready';
   requiredElement('workspaceLoading').hidden = true;
   requiredElement('workspaceError').hidden = false;
   requiredElement('workspaceError').textContent = '桌面连接接口未加载，请从 Deepscord 客户端打开工作区。';

@@ -65,6 +65,9 @@ async function runElectron() {
     assert.throws(() => poke.parseHit({ ...hit, nx: 2 }), /coordinates/);
     assert.throws(() => poke.parseHit({ ...hit, combo: 11 }), /combo/);
     assert.throws(() => poke.parseHit({ ...hit, pokerName: '\u0000' }), /name/);
+    assert.equal(poke.parseHit(hit).gesture, 'point');
+    assert.equal(poke.parseHit({ ...hit, gesture: 'middle' }).gesture, 'middle');
+    assert.throws(() => poke.parseHit({ ...hit, gesture: 'wave' }), /gesture/);
     assert.deepEqual(poke.parseBegin({ ...payload, extra: 'removed' }), payload);
     assert.equal(poke.sourceDisplay({ ...source, display_id: '' }), null);
     assert.equal(poke.sourceDisplay({ ...source, id: 'window:1:0' }), null);
@@ -89,10 +92,17 @@ async function runElectron() {
     assert.equal(await overlay.webContents.executeJavaScript('document.querySelector(".poke-finger").textContent'), '👆');
     assert.equal(await overlay.webContents.executeJavaScript('document.querySelectorAll("svg").length'), 0);
     assert.deepEqual(await overlay.webContents.executeJavaScript('(() => { const style = getComputedStyle(document.querySelector(".poke-finger")); return {font:style.fontSize,width:style.width,height:style.height}; })()'), { font: '32px', width: '36px', height: '40px' });
-    assert(await overlay.webContents.executeJavaScript('(() => { const style = getComputedStyle(document.querySelector(".poke-finger")); const matrix = new DOMMatrixReadOnly(style.transform); return Math.hypot(matrix.a,matrix.b) <= 1.201; })()'));
+    assert(await overlay.webContents.executeJavaScript('(() => { const style = getComputedStyle(document.querySelector(".poke-finger")); const matrix = new DOMMatrixReadOnly(style.transform); return Math.hypot(matrix.a,matrix.b) <= 2.001; })()'));
     assert(await overlay.webContents.executeJavaScript('(() => { const marker = document.querySelector(".poke-marker").getBoundingClientRect(); const target = document.querySelector(".poke-target").getBoundingClientRect(); return Math.abs(target.x + target.width/2 - marker.x) < .1 && Math.abs(target.y + target.height/2 - marker.y) < .1; })()'));
     assert.equal(await overlay.webContents.executeJavaScript('typeof require'), 'undefined');
     assert.equal(await overlay.webContents.executeJavaScript('typeof window.deepscord'), 'undefined');
+    await poke.triggerPokeOverlay(main.webContents, { ...hit, eventId:'middle-1', fromUserId:'peer-middle', combo:8, gesture:'middle' });
+    await overlay.webContents.executeJavaScript('new Promise(resolve => requestAnimationFrame(resolve))');
+    assert.deepEqual(await overlay.webContents.executeJavaScript(`(() => { const marker=document.querySelector('[data-gesture="middle"]'); const hand=marker.querySelector('.poke-finger'); const style=getComputedStyle(marker); return {text:hand.textContent,heat:marker.dataset.heat,scale:style.getPropertyValue('--poke-scale').trim(),angle:style.getPropertyValue('--poke-angle').trim(),caption:marker.querySelector('.poke-badge').textContent}; })()`), {text:'🖕',heat:'4',scale:'2',angle:'0deg',caption:'Native poke test · ×8 急了!'});
+    overlay.webContents.debugger.attach('1.3');
+    await overlay.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features:[{name:'prefers-reduced-motion',value:'reduce'}] });
+    assert(await overlay.webContents.executeJavaScript(`Array.from(document.querySelectorAll('.poke-marker')).every(marker => getComputedStyle(marker).animationName === 'none' && getComputedStyle(marker.querySelector('.poke-finger')).animationName === 'none' && getComputedStyle(marker.querySelector('.poke-target'),'::after').animationName === 'none')`));
+    overlay.webContents.debugger.detach();
     fs.writeFileSync(path.join(root, '.qa-tools', 'poke-overlay.png'), (await overlay.webContents.capturePage()).toPNG());
     poke.clearPokeOverlay(main.webContents, payload.sessionId);
     await overlay.webContents.executeJavaScript('new Promise(resolve => requestAnimationFrame(resolve))');

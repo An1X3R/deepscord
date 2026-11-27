@@ -1062,12 +1062,14 @@ function onChat(user, msg) {
   if (!hit || hit.channel.type!=='text') throw new TypeError('消息只能发送到文字频道');
   const requestId=msg.requestId===undefined ? null : mediaId(msg.requestId,'Chat request ID');
   const authorId=requestId ? reactionActor(verifiedMember(user.id)) : null;
+  if(store.content && msg.replyToId!==undefined)throw new TypeError('Encrypted chat cannot contain an outer reply message ID');
+  const replyToId=msg.replyToId===undefined ? undefined : mediaId(msg.replyToId,'Reply message ID');
   const previous=requestId ? (store.messages[channelId] || []).find(message=>message.clientRequestId===requestId && message.authorId===authorId) : null;
   if(previous){send(user.conn,{t:'chatResult',requestId,ok:true,result:{message:previous}});return;}
   const text = cleanText(msg.text);
   const sealed=msg.sealed===undefined?null:parseSealedMessage(msg.sealed);
   if(store.content){
-    if(!sealed||!requestId||sealed.keyId!==store.content.keyId||sealed.memberKey!==verifiedMember(user.id)||text)throw new TypeError('加密房间的消息必须由当前身份使用房间密钥签名且不能携带明文');
+    if(!sealed||!requestId||sealed.keyId!==store.content.keyId||sealed.memberKey!==verifiedMember(user.id)||text||msg.replyToId!==undefined)throw new TypeError('加密房间的消息必须由当前身份使用房间密钥签名且不能携带明文');
     verifySealedMessage({roomId:roomReplica.descriptor.roomId,channelId,requestId},sealed);
   }else if(sealed)throw new TypeError('请先完成历史迁移后再发送加密消息');
   const attachment=msg.attachment===undefined ? null : parseAttachment(msg.attachment);
@@ -1084,6 +1086,7 @@ function onChat(user, msg) {
     system: false,
     ...(attachment ? {attachment:{...attachment,...(store.content?{name:'encrypted.avif'}:{})}} : {}),
     ...(sealed?{sealed}:{}),
+    ...(replyToId===undefined?{}:{replyToId}),
     ...(requestId ? {clientRequestId:requestId,authorId} : {}),
   };
   appendMessage(channelId, message);

@@ -3,7 +3,7 @@
 import { el, store } from './util.js';
 import { icon } from './icons.js';
 import { openModal, toast } from './ui.js';
-import { prepareAvatar } from './profile.js';
+import { cropAvatar } from './avatar-crop.js';
 import { createFeatureSettings } from './feature-settings.js';
 import { DEFAULT_SCREEN_PREFERENCES, getScreenPreferences } from './screen-preferences.js';
 import { createScreenSettings } from './screen-settings.js';
@@ -12,6 +12,7 @@ import { parseTheme } from './customization-protocol.js';
 import {developerGuideLink} from './developer-guides.js';
 import {resourceManagerLink} from './resource-manager-link.js';
 import {parseInterfaceSelection,resolveInterfaceScheme} from './interface-scheme.js';
+import {isPresentationHidden} from './presentation-visibility.js';
 
 export const SETTINGS_KEY = 'echo.settings';
 
@@ -136,10 +137,16 @@ function row(label, control, hint) {
   );
 }
 
-export function openSettingsPanel({ settings, engine, onIdentityChange, desktopSettings, onDesktopSettingsChange }) {
-  const body = el('div', { class: 'settings' });
+/**
+ * @param {{settings:ReturnType<typeof loadSettings>,onIdentityChange:(settings:ReturnType<typeof loadSettings>)=>void,
+ * desktopSettings:import('./feature-settings.js').DesktopSettings|null,onDesktopSettingsChange:(value:import('./feature-settings.js').DesktopSettings)=>Promise<void>,
+ * onCustomizeInterface:(()=>void)|null,onChooseNotificationSound:(kind:'join'|'leave')=>Promise<void>,onResetNotificationSounds:()=>Promise<void>}} options
+ */
+export function openSoftwareSettingsPanel({ settings, onIdentityChange, desktopSettings, onDesktopSettingsChange, onCustomizeInterface, onChooseNotificationSound, onResetNotificationSounds }) {
+  const body = el('div', { class: 'settings', id: 'softwareSettingsPanel' });
+  const avatarController = new AbortController();
 
-  /* ---------------- 个人资料 ---------------- */
+  // Profile preferences stay local until an identity update is sent.
   const profile = section('个人资料');
   const nameInput = el('input', {
     class: 'input', id: 'profileName',
@@ -192,19 +199,104 @@ export function openSettingsPanel({ settings, engine, onIdentityChange, desktopS
   avatarFile.addEventListener('change', async () => {
     const file = avatarFile.files?.[0];
     if (!file) return;
+    avatarFile.disabled=true;
     try {
-      const avatar = await prepareAvatar(file);
+      const avatar = await cropAvatar(file,openModal,avatarController.signal);
+      if(avatar===null || avatarController.signal.aborted)return;
       settings.avatar = avatar;
       avatarPreview.src = avatar;
       avatarPreview.hidden = false;
       saveSettings(settings);
       onIdentityChange(settings);
-    } catch (error) { toast('头像设置失败：' + (error instanceof Error ? error.message : String(error)), 'error', 5000); }
+    } catch (error) { if(!avatarController.signal.aborted)toast('头像设置失败：' + (error instanceof Error ? error.message : String(error)), 'error', 5000); }
+    finally{avatarFile.value='';avatarFile.disabled=false;}
   });
   const clearAvatar = el('button', { type: 'button', class: 'btn ghost small', id: 'profileAvatarClear' }, '使用文字头像');
   clearAvatar.addEventListener('click', () => { settings.avatar = null; avatarPreview.removeAttribute('src'); avatarPreview.hidden = true; saveSettings(settings); onIdentityChange(settings); });
-  profile.appendChild(row('固定头像', el('div', { class: 'profile-avatar-controls' }, avatarPreview, avatarFile, clearAvatar), '保存在本机，加入房间时自动同步；压缩为96×96，不超过12KB。'));
+  profile.appendChild(row('固定头像', el('div', { class: 'profile-avatar-controls' }, avatarPreview, avatarFile, clearAvatar), '选择图片后拖动、缩放并确认裁剪；保存在本机，加入房间时自动同步为96×96头像，不超过12KB。'));
   body.appendChild(profile);
+
+  const appearance = section('本机界面与进出音效', '仅影响本机，不更改服务器或其他成员的设置。');
+  const themeButton = el('button', { type: 'button', class: 'btn ghost', id: 'themeCustomizationMenuBtn' }, '界面自定义');
+  themeButton.disabled = onCustomizeInterface === null;
+  themeButton.addEventListener('click', () => {
+    if (!onCustomizeInterface) return;
+    modal.close();
+    onCustomizeInterface();
+  });
+  appearance.appendChild(row('界面方案', themeButton, onCustomizeInterface ? '选择主题及其提供的选项' : '连接服务器后可选择界面方案'));
+  /** @param {string} id @param {string} label @param {()=>Promise<void>} action @returns {HTMLButtonElement} */
+  function soundButton(id, label, action) {
+    const button = el('button', { type: 'button', class: 'btn ghost small', id }, label);
+    button.addEventListener('click', async () => {
+      button.disabled = true;
+      try { await action(); }
+      catch (error) { toast('提示音设置失败：' + (error instanceof Error ? error.message : String(error)), 'error', 5000); }
+      finally { button.disabled = false; }
+    });
+    return button;
+  }
+  appearance.appendChild(row('进入频道音效', soundButton('notificationJoinSoundMenuBtn', '选择音效文件…', () => onChooseNotificationSound('join')), '选择本机音频文件，最长 10 秒、不超过 2 MiB'));
+  appearance.appendChild(row('退出频道音效', soundButton('notificationLeaveSoundMenuBtn', '选择音效文件…', () => onChooseNotificationSound('leave'))));
+  appearance.appendChild(row('默认进出音效', soundButton('notificationResetSoundsMenuBtn', '恢复默认', onResetNotificationSounds)));
+  body.appendChild(appearance);
+
+  // Notification preferences are independent of voice output.
+  const miscSec = section('提示与互动音效');
+  const soundCb = el('input', { type: 'checkbox', id: 'sounds' });
+  soundCb.checked = settings.sounds !== false;
+  soundCb.addEventListener('change', () => {
+    settings.sounds = soundCb.checked;
+    saveSettings(settings);
+  });
+  miscSec.appendChild(row('提示音', soundCb, '加入、离开频道及互动时播放音效'));
+  const interactionCb = el('input', { type: 'checkbox', id: 'interactionSounds' });
+  interactionCb.checked = settings.interactionSounds;
+  interactionCb.addEventListener('change', () => {
+    settings.interactionSounds = interactionCb.checked;
+    saveSettings(settings);
+  });
+  miscSec.appendChild(row('互动音效', interactionCb, '互动表情的音效；同时受提示音开关控制'));
+  const interactionValue = el('span', { class: 'value-badge' }, `${settings.interactionVolume}%`);
+  const interactionVolume = el('input', {
+    type: 'range', id: 'interactionVolume', min: '0', max: '100', step: '1',
+    value: String(settings.interactionVolume), class: 'slider', 'aria-label': '互动音量',
+  });
+  interactionVolume.addEventListener('input', () => {
+    settings.interactionVolume = Number(interactionVolume.value);
+    interactionValue.textContent = `${settings.interactionVolume}%`;
+    saveSettings(settings);
+  });
+  miscSec.appendChild(row('互动音量', el('div', { class: 'slider-wrap' }, interactionVolume, interactionValue), '默认 20%；收到的互动提醒独立于语音扬声器静音和音量'));
+  miscSec.appendChild(
+    el(
+      'div',
+      { class: 'about' },
+      el('div', { class: 'about-row' }, 'Deepscord · 语音频道'),
+      el('div', { class: 'about-row dim' }, '语音、伴奏与画面共享 · v1.0.0')
+    )
+  );
+  body.appendChild(miscSec);
+  const guides=section('自定义开发');
+  const directoryBridge=typeof window.deepscord?.openCustomizationDirectory==='function'?window.deepscord:null;
+  const reportDirectoryError=error=>toast(error.message,'error');
+  guides.append(resourceManagerLink(typeof window.deepscord?.openResourceManager==='function'?window.deepscord:null,reportDirectoryError));
+  guides.append(developerGuideLink('interfaces',directoryBridge,reportDirectoryError),developerGuideLink('interactions',directoryBridge,reportDirectoryError));body.append(guides);
+
+  if (desktopSettings && onDesktopSettingsChange) body.appendChild(createFeatureSettings(desktopSettings, onDesktopSettingsChange, (error) => toast(error.message, 'error', 5000)));
+
+  const doneBtn = el('button', { class: 'btn primary', id: 'softwareSettingsDone' }, '完成');
+  const modal = openModal({
+    title: '软件设置', body, footer: [doneBtn], width: 620,
+    onClose: () => { avatarController.abort(); },
+  });
+  doneBtn.addEventListener('click', () => modal.close());
+  return modal;
+}
+
+/** @param {{settings:ReturnType<typeof loadSettings>,engine:import('./voice.js').VoiceEngine}} options */
+export function openVoiceSettingsPanel({ settings, engine }) {
+  const body = el('div', { class: 'settings', id: 'voiceSettingsPanel' });
 
   const nativeScreenRelayAvailable = typeof window.deepscord?.screenRelayOffer === 'function';
   body.appendChild(createScreenSettings(getScreenPreferences(settings, true), nativeScreenRelayAvailable,
@@ -576,65 +668,27 @@ export function openSettingsPanel({ settings, engine, onIdentityChange, desktopS
     window.addEventListener('mousedown', captureMouse, true);
   });
 
-  /* ---------------- 通知 ---------------- */
-  const miscSec = section('其他');
-  const soundCb = el('input', { type: 'checkbox', id: 'sounds' });
-  soundCb.checked = settings.sounds !== false;
-  soundCb.addEventListener('change', () => {
-    settings.sounds = soundCb.checked;
-    saveSettings(settings);
-  });
-  miscSec.appendChild(row('提示音', soundCb, '加入、离开频道及互动时播放音效'));
-  const interactionCb = el('input', { type: 'checkbox', id: 'interactionSounds' });
-  interactionCb.checked = settings.interactionSounds;
-  interactionCb.addEventListener('change', () => {
-    settings.interactionSounds = interactionCb.checked;
-    saveSettings(settings);
-  });
-  miscSec.appendChild(row('互动音效', interactionCb, '炸弹和便便的音效；同时受提示音开关控制'));
-  const interactionValue = el('span', { class: 'value-badge' }, `${settings.interactionVolume}%`);
-  const interactionVolume = el('input', {
-    type: 'range', id: 'interactionVolume', min: '0', max: '100', step: '1',
-    value: String(settings.interactionVolume), class: 'slider', 'aria-label': '互动音量',
-  });
-  interactionVolume.addEventListener('input', () => {
-    settings.interactionVolume = Number(interactionVolume.value);
-    interactionValue.textContent = `${settings.interactionVolume}%`;
-    saveSettings(settings);
-  });
-  miscSec.appendChild(row('互动音量', el('div', { class: 'slider-wrap' }, interactionVolume, interactionValue), '默认 20%；收到的互动提醒独立于语音扬声器静音和音量'));
-  miscSec.appendChild(
-    el(
-      'div',
-      { class: 'about' },
-      el('div', { class: 'about-row' }, 'Deepscord · 语音频道'),
-      el('div', { class: 'about-row dim' }, '语音、伴奏与画面共享 · v1.0.0')
-    )
-  );
-  body.appendChild(miscSec);
-  const guides=section('自定义开发');
-  const directoryBridge=typeof window.deepscord?.openCustomizationDirectory==='function'?window.deepscord:null;
-  const reportDirectoryError=error=>toast(error.message,'error');
-  guides.append(resourceManagerLink(typeof window.deepscord?.openResourceManager==='function'?window.deepscord:null,reportDirectoryError));
-  guides.append(developerGuideLink('interfaces',directoryBridge,reportDirectoryError),developerGuideLink('interactions',directoryBridge,reportDirectoryError));body.append(guides);
-
-  if (desktopSettings && onDesktopSettingsChange) body.appendChild(createFeatureSettings(desktopSettings, onDesktopSettingsChange, (error) => toast(error.message, 'error', 5000)));
-
   const doneBtn = el('button', { class: 'btn primary', id: 'audioSettingsDone' }, '完成');
   const modal = openModal({
-    title: '设置',
+    title: '语音与共享设置',
     body,
     footer: [doneBtn],
     width: 620,
     onClose: () => {
       stopCapture();
       clearInterval(meterTimer);
+      document.removeEventListener('deepscord:visibility',syncMeterVisibility);
+      engine.setLocalMeterActive(false);
     },
   });
   doneBtn.addEventListener('click', () => modal.close());
 
   // 电平表刷新
+  function syncMeterVisibility(){engine.setLocalMeterActive(!isPresentationHidden());}
+  document.addEventListener('deepscord:visibility',syncMeterVisibility);
+  syncMeterVisibility();
   const meterTimer = setInterval(() => {
+    if(isPresentationHidden())return;
     renderCaptureStatus();
     if (!meter.isConnected) return;
     meterFill.style.width = levelToPercent(engine.getLocalLevel()) + '%';

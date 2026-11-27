@@ -36,3 +36,11 @@ jobs:
         run: npm run test:ci
       - name: Check types against the synchronized desktop sources
         run: npm run typecheck
+      - name: Compile and verify Windows protection compatibility
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          & ./tools/build-windows-protection.ps1
+          & ./tools/build-poke-window-bounds.ps1
+          node --test test/windows-protection-compat.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

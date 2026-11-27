@@ -1,0 +1,31 @@
+:root {
+  --side: var(--bg-side);
+  --rail: var(--bg-rail);
+  --elev: var(--bg-elev);
+  --input: var(--bg-input);
+  --muted: var(--text-2);
+  --subtle: var(--text-3);
+  --danger: #f38b99;
+  --warn: #e4c885;
+  font-family: var(--font, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif);
+}
+:root[data-local-interface='loading'] body { visibility: hidden; }
+.workspace-brand, .button.primary { color: var(--accent-ink); }
+.button { border-color: var(--line-2); }
+.button:hover, .method:hover { border-color: var(--accent); }
+.saved-room-icon.active, .workspace-add:hover, .saved-room-icon:hover,
+.intent-choice:hover, .intent-choice:focus-visible, .method:hover,
+.method[aria-pressed='true'], .saved-room-row.active { background: var(--accent-soft); }
+.saved-room-row.active { border-color: var(--accent); }
+.saved-room-icon.active { color: var(--accent); }
+.workspace :is(button, .saved-room-row, .offline-badge),
+.connection-panel :is(button, .input) { border-radius: var(--radius); }
+.notice { color: var(--text); border-color: var(--warn); background: color-mix(in srgb, var(--warn) 10%, var(--bg)); }
+.error-panel { color: var(--danger); border-color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, var(--bg)); }
+details { border-color: var(--accent); }
+.rail-local { color: var(--accent); }
+.workspace :is(h1,h2), .connection-panel :is(h1,h2) { font-family: var(--font-display, var(--font-book-display, var(--font, inherit))); }
+:root[data-interface-preset='constructivist'] .workspace-topbar,
+:root[data-interface-preset='constructivist'] .panel-heading { border-bottom: 3px solid var(--accent); }
+:root[data-interface-preset='constructivist'] .saved-room-row.active,
+:root[data-interface-preset='constructivist'] .method[aria-pressed='true'] { border-left: 5px solid var(--accent); }

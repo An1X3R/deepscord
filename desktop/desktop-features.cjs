@@ -5,7 +5,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { randomUUID } = require('node:crypto');
-const { initialSettings, desktopSettings, voiceOverlay } = require('./desktop-schema.cjs');
+const { createGlobalPTT,parsePTTConfig } = require('./global-ptt.cjs');
+const { initialSettings, desktopSettings, voiceOverlay, voiceOverlayDelta } = require('./desktop-schema.cjs');
 /** @typedef {import('./desktop-schema.cjs').DesktopSettings} DesktopSettings */
 /** @typedef {import('./desktop-schema.cjs').VoiceOverlay} VoiceOverlay */
 /** @typedef {import('./desktop-schema.cjs').JsonValue} JsonValue */
@@ -25,13 +26,20 @@ function createDesktopFeatures(options) {
   /** @type {VoiceOverlay} */
   let voice = { connected:false, members:[] };
   let registered = '';
+  let registeredDeafen = '';
+  const ptt = createGlobalPTT({ onState:state => {
+    const main = options.getWindow();
+    if (main && !main.isDestroyed()) main.webContents.send('desktop:ptt-state', state);
+  } });
   /** @type {string|null} */
   let shortcutError = null;
   let applyingBounds = false;
   let disposed = false;
-  /** @type {{id:string,previous:string,window:Electron.BrowserWindow,timer:NodeJS.Timeout}|null} */
+  /** @type {{id:string,previous:string,previousDeafen:string,window:Electron.BrowserWindow,timer:NodeJS.Timeout}|null} */
   let captureLease = null;
   let completedCapture = '';
+  /** @type {import('./global-ptt.cjs').PTTConfig|null} */
+  let pttConfig = null;
 
   /** @param {DesktopSettings} value @returns {DesktopSettings} */
   function reachable(value) {
@@ -55,10 +63,33 @@ function createDesktopFeatures(options) {
     const main = options.getWindow();
     if (main && !main.isDestroyed()) main.webContents.send('desktop:mute-shortcut');
   }
-  /** @param {string} accelerator @returns {void} */
-  function register(accelerator) {
-    if (accelerator === registered) return;
-    if (!globalShortcut.register(accelerator, sendMute)) throw new Error(`Global mute shortcut "${accelerator}" is unavailable; ${registered ? 'the previous shortcut remains active' : 'choose another shortcut in settings'}`);
+  /** @returns {void} */
+  function sendDeafen() {
+    if (captureLease) return;
+    const main = options.getWindow();
+    if (main && !main.isDestroyed()) main.webContents.send('desktop:deafen-shortcut');
+  }
+  /** @param {string} mute @param {string} deafen @returns {void} */
+  function registerPair(mute, deafen) {
+    if (mute === registered && deafen === registeredDeafen) return;
+    const previous = registered, previousDeafen = registeredDeafen;
+    if (previous) globalShortcut.unregister(previous);
+    if (previousDeafen) globalShortcut.unregister(previousDeafen);
+    registered = ''; registeredDeafen = '';
+    try {
+      if (!globalShortcut.register(mute, sendMute)) throw new Error(`Global mute shortcut "${mute}" is unavailable; ${previous ? 'the previous shortcut remains active' : 'choose another shortcut in settings'}`);
+      registered = mute;
+      if (!globalShortcut.register(deafen, sendDeafen)) throw new Error(`Global deafen shortcut "${deafen}" is unavailable; choose another shortcut in settings`);
+      registeredDeafen = deafen;
+    } catch (error) {
+      if (registered) globalShortcut.unregister(registered);
+      if (registeredDeafen) globalShortcut.unregister(registeredDeafen);
+      registered = ''; registeredDeafen = '';
+      if (previous && globalShortcut.register(previous, sendMute)) registered = previous;
+      if (previousDeafen && globalShortcut.register(previousDeafen, sendDeafen)) registeredDeafen = previousDeafen;
+      if (registered !== previous || registeredDeafen !== previousDeafen) console.error('global_shortcut_rollback_failed', { mute:previous,deafen:previousDeafen });
+      throw error;
+    }
   }
   /** @returns {void} */
   function restoreShortcut() {
@@ -70,7 +101,7 @@ function createDesktopFeatures(options) {
     lease.window.webContents.removeListener('did-start-navigation', cancelCapture);
     lease.window.webContents.removeListener('render-process-gone', cancelCapture);
     if (!lease.previous || disposed) return;
-    try { register(lease.previous); registered = lease.previous; shortcutError = null; }
+    try { registerPair(lease.previous, lease.previousDeafen); shortcutError = null; if (pttConfig) ptt.update(pttConfig); }
     catch (error) { shortcutError = error instanceof Error ? error.message : 'Global shortcut restoration failed with a non-error'; throw error; }
   }
   /** @returns {void} */
@@ -84,10 +115,12 @@ function createDesktopFeatures(options) {
     if (captureLease) throw new Error('Global shortcut capture is already active');
     const window = options.getWindow();
     if (!window || window.isDestroyed() || !window.isFocused()) throw new Error('Shortcut capture requires the focused application window');
-    const previous = registered, id = randomUUID();
+    const previous = registered, previousDeafen = registeredDeafen, id = randomUUID();
     if (previous) globalShortcut.unregister(previous);
-    registered = '';
-    captureLease = { id, previous, window, timer:setTimeout(cancelCapture, 30000) };
+    if (previousDeafen) globalShortcut.unregister(previousDeafen);
+    registered = ''; registeredDeafen = '';
+    ptt.stop();
+    captureLease = { id, previous, previousDeafen, window, timer:setTimeout(cancelCapture, 30000) };
     window.on('blur', cancelCapture);
     window.on('closed', cancelCapture);
     window.webContents.on('did-start-navigation', cancelCapture);
@@ -168,25 +201,36 @@ function createDesktopFeatures(options) {
   function saveSettings(input) {
     if (captureLease) throw new Error('Finish or cancel shortcut capture before saving desktop settings');
     const next = reachable(desktopSettings(input));
-    try { register(next.muteShortcut); }
+    const previous = settings;
+    try { registerPair(next.muteShortcut, next.deafenShortcut); }
     catch (error) { if (error instanceof Error) shortcutError = error.message; throw error; }
     try { persist(next); }
-    catch (error) { if (next.muteShortcut !== registered) globalShortcut.unregister(next.muteShortcut); throw error; }
-    if (registered && registered !== next.muteShortcut) globalShortcut.unregister(registered);
-    registered = next.muteShortcut;
+    catch (error) { registerPair(previous.muteShortcut, previous.deafenShortcut); throw error; }
     shortcutError = null;
     settings = next;
+    if (!settings.overlay.enabled) voice = {connected:false,members:[]};
     renderOverlay();
+    const main = options.getWindow();
+    if (main && !main.isDestroyed()) main.webContents.send('desktop:settings-changed', settings);
     return structuredClone(settings);
   }
   /** @param {JsonValue} input @returns {void} */
   function updateVoice(input) { voice = voiceOverlay(input); renderOverlay(); }
+  /** @param {JsonValue} input @returns {void} */
+  function updateVoiceDelta(input) {
+    if (!settings.overlay.enabled) return;
+    const delta = voiceOverlayDelta(input,voice);
+    const connectedChanged = voice.connected !== delta.connected;
+    voice = {...delta,members:voice.members.map((member,index)=>({...member,...delta.members[index]}))};
+    if (connectedChanged || !overlayWindow || overlayWindow.isDestroyed()) renderOverlay();
+    else overlayWindow.webContents.send('overlay:delta',delta);
+  }
   /** @returns {void} */
-  function resetVoice() { voice = { connected:false,members:[] }; closeOverlay(); }
+  function resetVoice() { pttConfig = null; ptt.stop(); voice = { connected:false,members:[] }; closeOverlay(); }
   /** @returns {DesktopSettings} */
   function getSettings() { return structuredClone(settings); }
   /** @returns {{registered:boolean,error:string|null}} */
-  function getShortcutStatus() { return { registered:registered !== '', error:shortcutError }; }
+  function getShortcutStatus() { return { registered:registered !== '' && registeredDeafen !== '', error:shortcutError }; }
   /** @returns {void} */
   function displaysChanged() { settings = reachable(settings); persist(settings); renderOverlay(); }
   /** @returns {void} */
@@ -194,14 +238,16 @@ function createDesktopFeatures(options) {
     disposed = true;
     restoreShortcut();
     resetVoice();
+    ptt.dispose();
+    if (registeredDeafen) globalShortcut.unregister(registeredDeafen);
     if (registered) globalShortcut.unregister(registered);
-    for (const channel of ['desktop:settings:get','desktop:settings:set','desktop:overlay:update','desktop:shortcut:status','desktop:shortcut:capture-begin','desktop:shortcut:capture-end','overlay:adjustment:finish','overlay:adjustment:resize']) ipcMain.removeHandler(channel);
+    for (const channel of ['desktop:ptt:update','desktop:settings:get','desktop:settings:set','desktop:overlay:update','desktop:overlay:delta','desktop:shortcut:status','desktop:shortcut:capture-begin','desktop:shortcut:capture-end','overlay:adjustment:finish','overlay:adjustment:resize']) ipcMain.removeHandler(channel);
     screen.removeListener('display-removed', displaysChanged);
     screen.removeListener('display-metrics-changed', displaysChanged);
   }
 
   settings = reachable(settings);
-  try { register(settings.muteShortcut); registered = settings.muteShortcut; }
+  try { registerPair(settings.muteShortcut, settings.deafenShortcut); }
   catch (error) {
     if (!(error instanceof Error)) throw error;
     shortcutError = error.message;
@@ -225,14 +271,20 @@ function createDesktopFeatures(options) {
     overlayWindow.setSize(input.width, input.height);
     saveBounds();
   });
+  ipcMain.handle('desktop:ptt:update', (event, /** @type {JsonValue} */ input) => { authorize(event);
+    try { pttConfig = parsePTTConfig(input); }
+    catch (error) { pttConfig = null; ptt.stop(); throw error; }
+    if (captureLease) return;
+    ptt.update(pttConfig); });
   ipcMain.handle('desktop:settings:get', (event) => { authorize(event); return getSettings(); });
   ipcMain.handle('desktop:shortcut:status', (event) => { authorize(event); return getShortcutStatus(); });
   ipcMain.handle('desktop:shortcut:capture-begin', (event) => { authorize(event); return beginShortcutCapture(); });
   ipcMain.handle('desktop:shortcut:capture-end', (event, /** @type {JsonValue} */ id) => { authorize(event); endShortcutCapture(id); });
   ipcMain.handle('desktop:settings:set', (event, /** @type {JsonValue} */ input) => { authorize(event); return saveSettings(input); });
-  ipcMain.handle('desktop:overlay:update', (event, /** @type {JsonValue} */ input) => { authorize(event); updateVoice(input); });
+  ipcMain.handle('desktop:overlay:update', (event, /** @type {JsonValue} */ input) => { authorize(event); if(settings.overlay.enabled)updateVoice(input); });
+  ipcMain.handle('desktop:overlay:delta', (event, /** @type {JsonValue} */ input) => { authorize(event); updateVoiceDelta(input); });
   screen.on('display-removed', displaysChanged);
   screen.on('display-metrics-changed', displaysChanged);
-  return { getSettings, getShortcutStatus, saveSettings, updateVoice, resetVoice, dispose };
+  return { getSettings, getShortcutStatus, saveSettings, updateVoice, updateVoiceDelta, resetVoice, dispose };
 }
 module.exports = { createDesktopFeatures };

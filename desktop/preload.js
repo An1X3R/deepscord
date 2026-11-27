@@ -12,7 +12,16 @@ contextBridge.exposeInMainWorld('deepscord', {
   cancelRadioMetadata: id => ipcRenderer.invoke('radio:cancel',id),
   authorizeRadioResource: input => ipcRenderer.invoke('radio:authorize',input),
   releaseRadioStation: id => ipcRenderer.invoke('radio:release',id),
+  /** @returns {Promise<import('../public/js/chat-unread.js').UnreadDocument>} */
+  getChatUnread: () => ipcRenderer.invoke('chat-unread:get'),
+  /** @param {import('../public/js/chat-unread.js').UnreadDocument} snapshot @returns {Promise<void>} */
+  saveChatUnread: snapshot => ipcRenderer.invoke('chat-unread:save',snapshot),
   getClientPreferences: () => ipcRenderer.invoke('preferences:get'),
+  getLocalInterface: () => ipcRenderer.invoke('preferences:local-interface'),
+  readNotificationSound: kind => ipcRenderer.invoke('notification-sound:read',kind),
+  chooseNotificationSound: kind => ipcRenderer.invoke('notification-sound:choose',kind),
+  saveNotificationSound: input => ipcRenderer.invoke('notification-sound:save',input),
+  resetNotificationSound: kind => ipcRenderer.invoke('notification-sound:reset',kind),
   listServerInteractions: roomId => ipcRenderer.invoke('customization:server-interactions',roomId),
   listInterfaceSchemes: () => ipcRenderer.invoke('customization:interfaces'),
   openResourceManager: () => ipcRenderer.invoke('resource-manager:open'),
@@ -93,6 +102,35 @@ contextBridge.exposeInMainWorld('deepscord', {
   setDesktopSettings: (settings) => ipcRenderer.invoke('desktop:settings:set', settings),
   /** @param {import('./desktop-schema.cjs').VoiceOverlay} state */
   updateVoiceOverlay: (state) => ipcRenderer.invoke('desktop:overlay:update', state),
+  /** @param {import('./desktop-schema.cjs').VoiceOverlayDelta} state */
+  updateVoiceOverlayDelta: (state) => ipcRenderer.invoke('desktop:overlay:delta', state),
+  /** @param {(settings:import('./desktop-schema.cjs').DesktopSettings)=>void} callback */
+  onDesktopSettingsChanged: (callback) => {
+    /** @param {Electron.IpcRendererEvent} _event @param {import('./desktop-schema.cjs').DesktopSettings} settings */
+    const listener = (_event, settings) => callback(settings);
+    ipcRenderer.on('desktop:settings-changed', listener);
+    return () => ipcRenderer.removeListener('desktop:settings-changed', listener);
+  },
+  /** @param {import('./global-ptt.cjs').PTTConfig} state */
+  updateGlobalPTT: (state) => {
+    if (!state || typeof state.connected !== 'boolean' || !['ptt','vad'].includes(state.mode) || typeof state.key !== 'string' || state.key.length < 1 || state.key.length > 40) throw new TypeError('Invalid global PTT configuration');
+    return ipcRenderer.invoke('desktop:ptt:update', { connected:state.connected,mode:state.mode,key:state.key });
+  },
+  /** @param {(state:import('./global-ptt.cjs').PTTState)=>void} callback @returns {()=>void} */
+  onGlobalPTT: (callback) => {
+    const listener = (_event, state) => {
+      if (!state || typeof state.down !== 'boolean' || state.error !== null && (typeof state.error !== 'string' || state.error.length > 4096)) throw new TypeError('Invalid global PTT state');
+      callback({ down:state.down,error:state.error });
+    };
+    ipcRenderer.on('desktop:ptt-state', listener);
+    return () => ipcRenderer.removeListener('desktop:ptt-state', listener);
+  },
+  /** @param {()=>void} callback @returns {()=>void} */
+  onDeafenShortcut: (callback) => {
+    const listener = () => callback();
+    ipcRenderer.on('desktop:deafen-shortcut', listener);
+    return () => ipcRenderer.removeListener('desktop:deafen-shortcut', listener);
+  },
   getProfile: () => ipcRenderer.invoke('profile:get'),
   /** @param {import('./profile-store.cjs').Profile} profile */
   saveProfile: (profile) => ipcRenderer.invoke('profile:save', profile),

@@ -6,7 +6,7 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 /** @type {string[]} */
 const portableTests=[
   'room-store','connection-policy','governance-checkpoint',
-  'content-upgrade',
+  'content-upgrade','chat-reply','chat-unread','static-assets',
   'network-policy','session-identity','network-session',
   'server-governance','server-roles','owner-continuity',
   'workspace-store','room-replica-compat',
@@ -16,7 +16,7 @@ const portableTests=[
 ];
 // Certificate generation in these suites uses Windows PowerShell.
 /** @type {string[]} */
-const platformTests=process.platform==='win32' ? ['direct-host','room-client'] : [];
+const platformTests=process.platform==='win32' ? ['direct-host','room-client','chat-unread-store'] : [];
 
 /** @param {string[]} argumentsList @returns {void} */
 function execute(argumentsList){

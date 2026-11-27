@@ -37,11 +37,11 @@ try{
   fs.mkdirSync(path.join(existing,'customization/interfaces'),{recursive:true});
   fs.writeFileSync(path.join(existing,'customization/interfaces/industrial.json'),JSON.stringify({...scheme,name:'Existing user scheme'}));
   const migrated=createCustomizationStore(path.join(existing,'customization'),shipped).listInterfaceSchemes();
-  assert.equal(migrated.schemes.length,4,'Only explicitly shipped templates and open packages may seed, excluding documentation examples');
+  assert.equal(migrated.schemes.length,5,'Only explicitly shipped templates and open packages may seed, excluding documentation examples');
   assert.equal(migrated.schemes.find(entry=>entry.id==='industrial')?.name,'Existing user scheme','Initial marker migration must preserve pre-existing user JSON');
   const store=createCustomizationStore(path.join(directory,'customization'),bundled),initial=store.listInterfaceSchemes();
-  assert.equal(initial.schemes.length,4);
-  for(const id of ['industrial-open','constructivist-open'])fs.unlinkSync(path.join(initial.directory,id+'.json'));
+  assert.equal(initial.schemes.length,5);
+  for(const id of ['industrial-open','constructivist-open','lanart-open'])fs.unlinkSync(path.join(initial.directory,id+'.json'));
   assert.equal(initial.directory,path.join(directory,'customization/interfaces'));
   const filename=path.join(initial.directory,'industrial.json');
   fs.writeFileSync(filename,JSON.stringify({...scheme,name:'User-owned scheme'}));

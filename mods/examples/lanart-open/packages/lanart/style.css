@@ -1,0 +1,910 @@
+/* ============================================================================
+   Lanart Dual-Mode Open Theme Package (AnimaDocs Visual System)
+   Day Mode: Survey Atlas (#f1f3f2 paper, #111820 ink, #245dcc cobalt, 0px rectilinear)
+   Night Mode: Orbital Observatory (#0d1014 space, #ece9e3 ink, #e34549 red, #f2b35d amber, 10px rounded)
+   ============================================================================ */
+:root[data-interface-package='true'] {
+  color-scheme: dark;
+  --bg: #0d1014;
+  --bg-side: #14171d;
+  --bg-rail: #090b0e;
+  --bg-elev: #1b1e24;
+  --bg-elev2: #252930;
+  --bg-input: #15181e;
+  --text: #ece9e3;
+  --text-2: #b4b3af;
+  --text-3: #85868a;
+  --accent: #e34549;
+  --accent-2: #ff5d5d;
+  --accent-ink: #ece9e3;
+  --accent-soft: #e345491f;
+  --accent-glow: #e3454933;
+  --accent-border: #e3454966;
+  --interface-accent: var(--accent);
+  --line: #2c3038;
+  --line-2: #454950;
+  --hover: #f2b35d14;
+  --hover-2: #f2b35d24;
+  --green: #4cc38a;
+  --green-soft: #4cc38a22;
+  --danger: #e34549;
+  --danger-text: #ff8b8e;
+  --danger-soft: #e3454924;
+  --warn: #f2b35d;
+  --radius: 8px;
+  --shadow-lg: 0 18px 46px #00000075;
+  --font: 'Microsoft YaHei UI', 'Microsoft YaHei', 'PingFang SC', 'Noto Sans SC', 'Segoe UI', system-ui, sans-serif;
+  --font-mono: 'SFMono-Regular', 'Cascadia Mono', Consolas, ui-monospace, monospace;
+}
+
+/* Global Host Control Adaptation */
+:root[data-interface-package='true'] :is(.btn.primary,.send-btn,.rail-brand) {
+  color: var(--accent-ink);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+:root[data-interface-package='true'] .msg-text { color: var(--text); }
+:root[data-interface-package='true'] .msg-text strong { color: var(--text); }
+:root[data-interface-package='true'] .msg-text a { color: var(--accent-2); text-decoration: underline; }
+:root[data-interface-package='true'] .msg-text :is(code,pre) { background: var(--bg-elev2); color: var(--text); }
+:root[data-interface-package='true'] :is(.poke-audio-volume input,.peer-volume input,.quick-volume-panel input,.radio-volume input,.avatar-crop-zoom input) {
+  accent-color: var(--accent);
+}
+:root[data-interface-package='true'] .avatar-crop-frame {
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+}
+:root[data-interface-package='true'] .modal-backdrop { backdrop-filter: none; background: #090b0eb8; }
+:root[data-interface-package='true']:has(#theme-lanart[data-art-mode='day']) { color-scheme: light; }
+:root[data-interface-package='true'] .modal {
+  background: var(--bg-side);
+  color: var(--text);
+  border: 1px solid var(--line-2);
+  border-top: 3px solid var(--accent);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Mode-Pinned Tokens on #theme-lanart */
+#theme-lanart[data-art-mode='day'] {
+  color-scheme: light;
+  --lanart-ground: #f1f3f2;
+  --lanart-surface: #ffffffd6;
+  --lanart-surface-solid: #ffffff;
+  --lanart-surface-strong: #e4ecf8;
+  --lanart-ink: #111820;
+  --lanart-ink-soft: #56616d;
+  --lanart-ink-muted: #7d8991;
+  --lanart-signal: #245dcc;
+  --lanart-signal-bright: #3474e8;
+  --lanart-signal-soft: #245dcc14;
+  --lanart-interactive: #245dcc;
+  --lanart-focus: #245dcc;
+  --lanart-line: #c7cdd0;
+  --lanart-line-strong: #7d8991;
+  --lanart-card-radius: 0px;
+  --lanart-btn-radius: 0px;
+  --lanart-shadow: 0 12px 28px #1118201f;
+}
+
+#theme-lanart[data-art-mode='night'] {
+  color-scheme: dark;
+  --lanart-ground: #0d1014;
+  --lanart-surface: #181b21d6;
+  --lanart-surface-solid: #181b21;
+  --lanart-surface-strong: #22262f;
+  --lanart-ink: #ece9e3;
+  --lanart-ink-soft: #b4b3af;
+  --lanart-ink-muted: #85868a;
+  --lanart-signal: #e34549;
+  --lanart-signal-bright: #ff5d5d;
+  --lanart-signal-soft: #e345491f;
+  --lanart-interactive: #f2b35d;
+  --lanart-focus: #ffd48a;
+  --lanart-line: #2c3038;
+  --lanart-line-strong: #454950;
+  --lanart-card-radius: 10px;
+  --lanart-btn-radius: 8px;
+  --lanart-shadow: 0 18px 42px #00000070;
+}
+
+/* Main Shell Grid */
+#theme-lanart {
+  --theme-gap: var(--scheme-content-spacing, 14px);
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  grid-template: 50px 64px minmax(0, 1fr) 48px / 236px minmax(0, 1fr) 208px;
+  gap: 0;
+  background: var(--lanart-ground);
+  color: var(--lanart-ink);
+  font-family: var(--font);
+  overflow: hidden;
+}
+#theme-lanart *, #theme-lanart *::before, #theme-lanart *::after { box-sizing: border-box; }
+#theme-lanart [data-deepscord-slot] { min-width: 0; min-height: 0; }
+
+/* ============================================================================
+   Background Art Adapter: Day Survey Atlas & Night Orbital Observatory
+   ============================================================================ */
+#theme-lanart .theme-lanart-art {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+#theme-lanart .theme-lanart-plate,
+#theme-lanart .theme-lanart-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+/* Hide inactive plate with display:none at rest so it costs zero layout/paint/animation */
+#theme-lanart[data-art-mode='day']:not([data-switching='true']) .theme-lanart-night-plate { display: none; }
+#theme-lanart[data-art-mode='night']:not([data-switching='true']) .theme-lanart-day-plate { display: none; }
+
+/* Satellite Anchor Reveal Disc (centered at viewBox 606, 198 -> ~42% X, 22% Y) */
+#theme-lanart .theme-lanart-reveal-disc {
+  position: absolute;
+  left: 42%;
+  top: 22%;
+  width: 180px;
+  height: 180px;
+  margin-left: -90px;
+  margin-top: -90px;
+  border-radius: 50%;
+  border: 2px solid var(--lanart-signal);
+  background: radial-gradient(circle, var(--lanart-signal-soft) 0%, transparent 72%);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Day Survey Atlas SVG Styling */
+#theme-lanart .lanart-day-lattice-line { stroke: #c7cdd0; stroke-opacity: 0.48; stroke-width: 1; }
+#theme-lanart .lanart-day-lattice-cross { stroke: #7d8991; stroke-opacity: 0.45; stroke-width: 1; }
+#theme-lanart .lanart-land-0 { fill: #e2eaf6; fill-opacity: 0.72; }
+#theme-lanart .lanart-land-2 { fill: #cfdcf1; fill-opacity: 0.68; }
+#theme-lanart .lanart-land-4 { fill: #aec3e7; fill-opacity: 0.62; }
+#theme-lanart .lanart-plate-wash { fill: #111820; fill-opacity: 0.05; }
+#theme-lanart .lanart-plate-paper { fill: #ffffff; fill-opacity: 0.72; stroke: #c7cdd0; stroke-width: 1; }
+#theme-lanart .lanart-plate-line { stroke: #7d8991; stroke-opacity: 0.5; stroke-width: 1; }
+#theme-lanart .lanart-tile-blue { fill: #2b66d9; fill-opacity: 0.78; }
+#theme-lanart .lanart-tile-pale { fill: #c8daf3; fill-opacity: 0.78; }
+#theme-lanart .lanart-tile-ink { fill: #111820; fill-opacity: 0.78; }
+#theme-lanart .lanart-tile-outline { stroke: #7d8991; stroke-opacity: 0.52; stroke-width: 1; }
+#theme-lanart .lanart-guide-circle {
+  stroke: #7d8991;
+  stroke-dasharray: 3 9;
+  stroke-opacity: 0.45;
+  animation: lanart-guide-crawl 140s linear infinite;
+}
+#theme-lanart .lanart-guide-arc { stroke: #245dcc; stroke-opacity: 0.8; stroke-width: 1.3; }
+#theme-lanart .lanart-guide-ticks { stroke: #7d8991; stroke-opacity: 0.5; stroke-width: 1; }
+#theme-lanart .lanart-route-ghost { stroke: #7d8991; stroke-dasharray: 4 6; stroke-opacity: 0.48; }
+#theme-lanart .lanart-route-main { stroke: #245dcc; stroke-opacity: 0.86; stroke-width: 1.75; }
+#theme-lanart .lanart-route-crawl {
+  stroke: #ffffff;
+  stroke-dasharray: 2 14;
+  stroke-opacity: 0.88;
+  stroke-width: 1.5;
+  animation: lanart-route-crawl 32s linear infinite;
+}
+#theme-lanart .lanart-route-survey { stroke: #245dcc; stroke-dasharray: 6 5; stroke-opacity: 0.65; stroke-width: 1.2; }
+#theme-lanart .lanart-node-sq { fill: #245dcc; }
+#theme-lanart .lanart-node-core { fill: #ffffff; animation: lanart-node-blink 6.4s ease-in-out infinite; }
+#theme-lanart .lanart-tag-plates path { stroke: #245dcc; stroke-opacity: 0.7; }
+#theme-lanart .lanart-tag-plates rect { fill: #245dcc; }
+#theme-lanart .lanart-tag-plates text { fill: #ffffff; font: 700 9px/1 var(--font-mono); letter-spacing: .08em; }
+#theme-lanart .lanart-day-labels text { fill: #56616d; font: 600 10px/1 var(--font-mono); letter-spacing: .06em; }
+#theme-lanart .lanart-plate-numbers text { fill: #111820; fill-opacity: 0.42; font: 700 22px/1 var(--font-mono); }
+#theme-lanart .lanart-plate-numbers line { stroke: #111820; stroke-opacity: 0.42; stroke-width: 2; }
+
+/* Night Orbital Observatory SVG Styling */
+#theme-lanart .lanart-night-grid-line { stroke: #ece9e3; stroke-opacity: 0.06; stroke-width: 1; }
+#theme-lanart .lanart-planet-limb { stroke: #ece9e3; stroke-opacity: 0.18; stroke-width: 1.1; }
+#theme-lanart .lanart-ranging-arc { stroke: #ece9e3; stroke-dasharray: 3 6; stroke-opacity: 0.24; stroke-width: 1; }
+#theme-lanart .lanart-crosshair { stroke: #ece9e3; stroke-dasharray: 2 6; stroke-opacity: 0.22; }
+#theme-lanart .lanart-disc-lens { fill: #a8272e; fill-opacity: 0.52; }
+#theme-lanart .lanart-disc-twin-outline { stroke: #e34549; stroke-opacity: 0.28; stroke-width: 1; }
+#theme-lanart .lanart-tick-spin {
+  transform-box: view-box;
+  transform-origin: 1010px 236px;
+  animation: lanart-spin-360 220s linear infinite;
+}
+#theme-lanart .lanart-tick-major { stroke: #ece9e3; stroke-opacity: 0.68; stroke-width: 1.2; }
+#theme-lanart .lanart-state-dot { fill: #ff5d5d; }
+#theme-lanart .lanart-orbits ellipse { stroke: #ece9e3; stroke-opacity: 0.44; stroke-width: 0.95; }
+#theme-lanart .lanart-orbits .lanart-orbit-soft { stroke-opacity: 0.22; }
+#theme-lanart .lanart-orbits .lanart-orbit-faint { stroke-dasharray: 3 7; stroke-opacity: 0.32; }
+#theme-lanart .lanart-orbit-comet {
+  stroke: #ece9e3;
+  stroke-dasharray: 36 964;
+  stroke-linecap: round;
+  stroke-opacity: 0.88;
+  stroke-width: 1.5;
+  animation: lanart-orbit-comet 22s linear infinite;
+}
+#theme-lanart .lanart-orbit-comet-slow {
+  animation-duration: 34s;
+  animation-direction: reverse;
+  stroke-opacity: 0.5;
+}
+#theme-lanart .lanart-craft-leader { stroke: #ece9e3; stroke-dasharray: 3 4; stroke-opacity: 0.42; stroke-width: 0.9; }
+#theme-lanart .lanart-craft-marker { fill: none; stroke: #f2b35d; stroke-opacity: 0.78; stroke-width: 1.1; }
+#theme-lanart .lanart-satellite { fill: #ece9e3; }
+#theme-lanart .lanart-satellite-ring {
+  stroke: #ece9e3;
+  stroke-opacity: 0.55;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: lanart-pulse 4.6s ease-out infinite;
+}
+#theme-lanart .lanart-pixel-light { fill: #ece9e3; fill-opacity: 0.82; animation: lanart-flicker 5.2s steps(1, end) infinite; }
+#theme-lanart .lanart-pixel-dark { fill: #0d1014; }
+#theme-lanart .lanart-plus-marks { stroke: #ece9e3; stroke-opacity: 0.48; stroke-width: 1; }
+#theme-lanart .lanart-night-labels text { fill: #ece9e3; fill-opacity: 0.52; font: 600 10px/1 var(--font-mono); letter-spacing: .1em; }
+
+@keyframes lanart-guide-crawl { to { stroke-dashoffset: -1068px; } }
+@keyframes lanart-route-crawl { to { stroke-dashoffset: -160px; } }
+@keyframes lanart-node-blink { 0%, 70%, 100% { fill-opacity: 1; } 78% { fill-opacity: 0.15; } 86% { fill-opacity: 1; } }
+@keyframes lanart-spin-360 { to { transform: rotate(360deg); } }
+@keyframes lanart-orbit-comet { to { stroke-dashoffset: -1000; } }
+@keyframes lanart-pulse { 0% { opacity: 0.65; transform: scale(1); } 85%, 100% { opacity: 0; transform: scale(2.1); } }
+@keyframes lanart-flicker { 0%, 88%, 100% { opacity: 1; } 91% { opacity: 0.15; } 95% { opacity: 0.85; } }
+
+/* ============================================================================
+   1. Top Calibration Navbar
+   ============================================================================ */
+#theme-lanart .theme-lanart-navbar {
+  position: relative;
+  z-index: 3;
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 18px;
+  background: var(--lanart-surface);
+  border-bottom: 1px solid var(--lanart-line);
+  box-shadow: 0 2px 0 var(--lanart-signal-soft);
+}
+#theme-lanart .theme-lanart-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+#theme-lanart .theme-lanart-logo-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--lanart-ink);
+  background: var(--lanart-surface-solid);
+  position: relative;
+}
+#theme-lanart .theme-lanart-logo-inner {
+  width: 10px;
+  height: 10px;
+  background: var(--lanart-signal);
+}
+#theme-lanart .theme-lanart-brand-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+#theme-lanart .theme-lanart-title {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: .03em;
+  color: var(--lanart-ink);
+  white-space: nowrap;
+}
+#theme-lanart .theme-lanart-sub {
+  font: 600 9px/1 var(--font-mono);
+  letter-spacing: .12em;
+  color: var(--lanart-ink-muted);
+  white-space: nowrap;
+}
+
+/* Horizontal Domain Rail in Navbar */
+#theme-lanart .theme-lanart-navbar > [data-deepscord-slot='rail'] {
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+}
+#theme-lanart .rail {
+  display: flex;
+  position: static;
+  width: 100%;
+  height: 100%;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+}
+#theme-lanart .rail-brand,
+#theme-lanart .rail-divider,
+#theme-lanart .rail-spacer,
+#theme-lanart .rail-settings { display: none; }
+#theme-lanart .rail-list {
+  flex: 1;
+  flex-direction: row;
+  align-items: center;
+  justify-content: start;
+  width: auto;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+#theme-lanart .rail-item { flex: 0 0 34px; width: 34px; height: 34px; }
+#theme-lanart .rail-item .rail-icon {
+  width: 32px;
+  height: 32px;
+  font-size: 13px;
+  border-radius: var(--lanart-btn-radius);
+  border: 1.5px solid var(--lanart-line-strong);
+}
+#theme-lanart .rail-item.active .rail-icon {
+  border-color: var(--lanart-signal);
+  box-shadow: 0 0 0 2px var(--lanart-signal-soft);
+}
+#theme-lanart .rail-add {
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--lanart-btn-radius);
+  border: 1px dashed var(--lanart-line-strong);
+  color: var(--lanart-ink-soft);
+}
+
+/* Altimeter & Telemetry Bar */
+#theme-lanart .theme-lanart-telemetry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 11px;
+  background: var(--lanart-surface-solid);
+  border: 1px solid var(--lanart-line);
+  border-left: 3px solid var(--lanart-signal);
+  border-radius: var(--lanart-btn-radius);
+  font: 600 10.5px/1.2 var(--font-mono);
+  color: var(--lanart-ink-soft);
+  white-space: nowrap;
+}
+#theme-lanart .theme-lanart-altimeter {
+  color: var(--lanart-signal);
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+#theme-lanart .theme-lanart-divider {
+  width: 1px;
+  height: 12px;
+  background: var(--lanart-line);
+}
+#theme-lanart .theme-lanart-status { color: var(--lanart-ink); }
+#theme-lanart .theme-lanart-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+#theme-lanart button[data-theme-action] {
+  min-height: 30px;
+  padding: 5px 11px;
+  border: 1px solid var(--lanart-line-strong);
+  border-radius: var(--lanart-btn-radius);
+  background: var(--lanart-surface-solid);
+  color: var(--lanart-ink);
+  font: 650 11.5px/1.2 var(--font);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease;
+}
+#theme-lanart button[data-theme-action]:hover,
+#theme-lanart button[data-theme-action][aria-pressed='true'],
+#theme-lanart button[data-theme-action][aria-expanded='true'] {
+  border-color: var(--lanart-interactive);
+  background: var(--lanart-signal-soft);
+  color: var(--lanart-ink);
+}
+#theme-lanart .theme-lanart-mode-btn {
+  background: var(--lanart-signal) !important;
+  color: #ffffff !important;
+  border-color: var(--lanart-signal) !important;
+  font-weight: 750 !important;
+}
+#theme-lanart .theme-lanart-mode-btn:hover {
+  background: var(--lanart-signal-bright) !important;
+}
+#theme-lanart button[data-theme-action]:focus-visible {
+  outline: 2px solid var(--lanart-focus);
+  outline-offset: 2px;
+}
+#theme-lanart #theme-lanart-directory { display: none; }
+
+/* ============================================================================
+   2. Hero Sub-Bar: Server Identity + Docked Channel Deck
+   ============================================================================ */
+#theme-lanart .theme-lanart-hero-bar {
+  position: relative;
+  z-index: 2;
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(240px, 1fr) minmax(300px, 1.15fr);
+  align-items: center;
+  gap: 16px;
+  padding: 8px 20px;
+  border-bottom: 1px solid var(--lanart-line);
+  background: var(--lanart-surface-solid);
+}
+#theme-lanart .theme-lanart-hero-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+#theme-lanart .theme-lanart-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font: 700 10px/1.2 var(--font-mono);
+  letter-spacing: .1em;
+  color: var(--lanart-ink-soft);
+}
+#theme-lanart .theme-lanart-kicker i {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  background: var(--lanart-signal);
+  border-radius: var(--lanart-btn-radius);
+}
+#theme-lanart h1 {
+  margin: 0;
+  font-size: clamp(20px, 2.2vw, 28px);
+  font-weight: 850;
+  letter-spacing: -.02em;
+  color: var(--lanart-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#theme-lanart .theme-lanart-channel-deck {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  min-width: 0;
+  padding: 5px 12px;
+  background: var(--lanart-surface);
+  border: 1px solid var(--lanart-line);
+  border-top: 2.5px solid var(--lanart-signal);
+  border-radius: var(--lanart-card-radius);
+  box-shadow: var(--lanart-shadow);
+}
+#theme-lanart .theme-lanart-channel-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 10px;
+  border-right: 1px solid var(--lanart-line);
+  min-width: 0;
+}
+#theme-lanart .theme-lanart-channel-code {
+  font: 700 10px/1 var(--font-mono);
+  color: var(--lanart-signal);
+  letter-spacing: .06em;
+  flex: none;
+}
+#theme-lanart #theme-lanart-channel {
+  font-size: 13.5px;
+  font-weight: 750;
+  color: var(--lanart-ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 150px;
+}
+#theme-lanart [data-deepscord-slot='topbar'] {
+  flex: 1;
+  min-width: 0;
+}
+#theme-lanart .topbar {
+  height: 40px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  backdrop-filter: none;
+}
+#theme-lanart .topbar-left { display: none; }
+#theme-lanart .topbar-right { width: 100%; justify-content: flex-end; gap: 6px; }
+#theme-lanart .conn-pill {
+  border-radius: var(--lanart-btn-radius);
+  border: 1px solid var(--lanart-line);
+  background: var(--lanart-surface-solid);
+  color: var(--lanart-ink-soft);
+  font: 600 10.5px/1.2 var(--font-mono);
+}
+
+/* ============================================================================
+   3. Left Directory & Right Members Panels (AnimaDocs `目录索引 / 01 LIVE` Card)
+   ============================================================================ */
+#theme-lanart .theme-lanart-directory,
+#theme-lanart .theme-lanart-members {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  margin: 10px;
+  background: var(--lanart-surface);
+  border: 1px solid var(--lanart-line);
+  border-top: 3px solid var(--lanart-signal);
+  border-radius: var(--lanart-card-radius);
+  box-shadow: var(--lanart-shadow);
+  overflow: hidden;
+}
+/* Night Mode Aiming Corner Brackets (from dark-1440-7000.png) */
+#theme-lanart[data-art-mode='night'] .theme-lanart-directory::before,
+#theme-lanart[data-art-mode='night'] .theme-lanart-members::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 10px;
+  height: 10px;
+  border-top: 1.5px solid var(--lanart-signal);
+  border-left: 1.5px solid var(--lanart-signal);
+  pointer-events: none;
+  z-index: 3;
+}
+#theme-lanart[data-art-mode='night'] .theme-lanart-directory::after,
+#theme-lanart[data-art-mode='night'] .theme-lanart-members::after {
+  content: '';
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  width: 10px;
+  height: 10px;
+  border-bottom: 1.5px solid var(--lanart-signal);
+  border-right: 1.5px solid var(--lanart-signal);
+  pointer-events: none;
+  z-index: 3;
+}
+#theme-lanart .theme-lanart-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid var(--lanart-line);
+}
+#theme-lanart .theme-lanart-card-index {
+  font: 700 11px/1.2 var(--font-mono);
+  color: var(--lanart-signal);
+  letter-spacing: .06em;
+}
+#theme-lanart .theme-lanart-live-pill {
+  padding: 2px 7px;
+  background: var(--lanart-signal);
+  color: #ffffff;
+  font: 800 9.5px/1.2 var(--font-mono);
+  letter-spacing: .08em;
+  border-radius: 2px;
+}
+#theme-lanart[data-art-mode='day'] .theme-lanart-live-pill {
+  background: #111820;
+}
+
+#theme-lanart [data-deepscord-slot='sidebar'],
+#theme-lanart [data-deepscord-slot='members'] {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+#theme-lanart .sidebar,
+#theme-lanart .members {
+  position: static;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  visibility: inherit;
+  pointer-events: inherit;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+#theme-lanart .sidebar-head {
+  height: 50px;
+  padding: 8px 12px;
+  background: transparent;
+  border-bottom: 1px solid var(--lanart-line);
+}
+#theme-lanart .sidebar-head h1 {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--lanart-ink);
+}
+#theme-lanart .sidebar-head .server-hierarchy > span {
+  font: 600 9.5px/1.2 var(--font-mono);
+  color: var(--lanart-ink-muted);
+}
+#theme-lanart .channel-scroll {
+  padding: 8px 10px 14px;
+  counter-reset: lanart-channel;
+}
+#theme-lanart .channel-row {
+  counter-increment: lanart-channel;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  border-bottom: 1px solid var(--lanart-line);
+}
+#theme-lanart .channel {
+  min-height: 38px;
+  padding: 6px 8px;
+  border-radius: 0;
+  border-left: 2.5px solid transparent;
+  background: transparent;
+  color: var(--lanart-ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+#theme-lanart .channel::before {
+  content: counter(lanart-channel, decimal-leading-zero);
+  min-width: 22px;
+  font: 700 10.5px/1 var(--font-mono);
+  color: var(--lanart-signal);
+}
+#theme-lanart .channel:hover {
+  background: var(--lanart-signal-soft);
+  color: var(--lanart-ink);
+}
+#theme-lanart .channel.active {
+  background: var(--lanart-signal-soft);
+  border-left-color: var(--lanart-signal);
+  color: var(--lanart-ink);
+  font-weight: 750;
+}
+#theme-lanart .channel-settings {
+  width: 30px;
+  height: 32px;
+  flex: none;
+  color: var(--lanart-ink-muted);
+  border-radius: var(--lanart-btn-radius);
+}
+#theme-lanart .channel-settings:hover {
+  color: var(--lanart-ink);
+  background: var(--lanart-signal-soft);
+}
+
+/* ============================================================================
+   4. Center Stage & Chat Viewport
+   ============================================================================ */
+#theme-lanart .theme-lanart-main {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  margin: 10px 0;
+  background: var(--lanart-surface);
+  border: 1px solid var(--lanart-line);
+  border-top: 3px solid var(--lanart-signal);
+  border-radius: var(--lanart-card-radius);
+  box-shadow: var(--lanart-shadow);
+  overflow: hidden;
+}
+#theme-lanart .radio-strip {
+  min-height: 36px;
+  padding: 4px 16px;
+  background: var(--lanart-surface-solid);
+  border-bottom: 1px solid var(--lanart-line);
+  color: var(--lanart-ink-soft);
+}
+#theme-lanart .radio-live { color: var(--lanart-signal); }
+#theme-lanart [data-deepscord-slot='content'] {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+#theme-lanart .content {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  background: transparent;
+}
+#theme-lanart .voice-stage {
+  padding: var(--theme-gap);
+  background: transparent;
+  border-bottom: 1px solid var(--lanart-line);
+}
+#theme-lanart .content:has(.chat[hidden]) .voice-stage {
+  flex: 1;
+  max-height: none;
+  border-bottom: 0;
+}
+#theme-lanart .stage-head {
+  padding-bottom: 10px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--lanart-line);
+}
+#theme-lanart .stage-title {
+  font-size: calc(21px * var(--scheme-title-scale, 1.05));
+  font-weight: 800;
+  color: var(--lanart-ink);
+}
+#theme-lanart .stage-grid {
+  gap: var(--scheme-content-spacing, 14px);
+}
+#theme-lanart .tile {
+  background: var(--lanart-surface-solid);
+  border: 1px solid var(--lanart-line);
+  border-top: 2.5px solid var(--lanart-signal);
+  border-radius: var(--lanart-btn-radius);
+  box-shadow: 0 4px 14px #00000014;
+}
+#theme-lanart .tile.speaking {
+  border-color: var(--green);
+  border-top-color: var(--green);
+  box-shadow: inset 3px 0 var(--green);
+}
+#theme-lanart .messages {
+  background: transparent;
+  padding-inline: calc(var(--scheme-content-spacing, 14px) * 1.4);
+}
+#theme-lanart .intro-ico {
+  background: var(--lanart-signal-soft) !important;
+  color: var(--lanart-signal) !important;
+  border: 1.5px solid var(--lanart-signal) !important;
+  border-radius: var(--lanart-btn-radius) !important;
+}
+#theme-lanart .composer-wrap {
+  border-top: 1px solid var(--lanart-line);
+  background: var(--lanart-surface-solid);
+}
+#theme-lanart .composer {
+  background: var(--lanart-ground);
+  border: 1px solid var(--lanart-line-strong);
+  border-radius: var(--lanart-btn-radius);
+}
+#theme-lanart .send-btn {
+  background: var(--lanart-signal);
+  color: #ffffff;
+  border-radius: var(--lanart-btn-radius);
+}
+
+/* ============================================================================
+   5. Bottom Telemetry Footer
+   ============================================================================ */
+#theme-lanart .theme-lanart-footer {
+  position: relative;
+  z-index: 3;
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 18px;
+  background: var(--lanart-surface);
+  border-top: 1px solid var(--lanart-line);
+}
+#theme-lanart .theme-lanart-footer-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+  font: 600 10.5px/1 var(--font-mono);
+  color: var(--lanart-ink-soft);
+}
+#theme-lanart .theme-lanart-square-dot {
+  width: 7px;
+  height: 7px;
+  background: var(--lanart-signal);
+  flex: none;
+}
+#theme-lanart .theme-lanart-footer-line {
+  flex: 1;
+  height: 1px;
+  background: var(--lanart-line);
+}
+#theme-lanart [data-deepscord-slot='self'] {
+  width: 276px;
+  max-width: 100%;
+}
+#theme-lanart .self-panel {
+  display: flex;
+  position: static;
+  width: 100%;
+  height: 42px;
+  margin: 0;
+  padding: 4px 10px;
+  background: var(--lanart-surface-solid);
+  border: 1px solid var(--lanart-line);
+  border-left: 3px solid var(--lanart-signal);
+  border-radius: var(--lanart-btn-radius);
+  visibility: visible;
+  pointer-events: auto;
+}
+
+#theme-lanart .media-expanded { position: fixed; inset: 114px 0 48px 246px; z-index: 25; }
+
+/* Compact Density Mode */
+#theme-lanart[data-density='compact'] { --theme-gap: 9px; }
+#theme-lanart[data-density='compact'] .channel { min-height: 32px; }
+#theme-lanart[data-density='compact'] .tile { min-height: 140px; padding: 12px; }
+#theme-lanart[data-density='compact'] .msg { padding-block: 3px; }
+
+/* Responsive Viewports */
+@media (max-width: 1150px) {
+  #theme-lanart { grid-template-columns: 224px minmax(0, 1fr); }
+  #theme-lanart .theme-lanart-members { display: none; }
+  #theme-lanart .theme-lanart-main { margin-right: 10px; }
+  #theme-lanart .media-expanded { left: 234px; }
+}
+@media (max-width: 720px) {
+  #theme-lanart { grid-template: 46px auto minmax(0, 1fr) 48px / minmax(0, 1fr); }
+  #theme-lanart .theme-lanart-navbar { padding: 0 8px; gap: 6px; }
+  #theme-lanart .theme-lanart-brand-copy,
+  #theme-lanart .theme-lanart-telemetry { display: none; }
+  #theme-lanart .theme-lanart-actions { gap: 4px; }
+  #theme-lanart button[data-theme-action] { padding: 4px 7px; font-size: 10.5px; min-height: 28px; }
+  #theme-lanart #theme-lanart-directory { display: inline-block; }
+  #theme-lanart .theme-lanart-hero-bar {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 5px;
+    padding: 6px 10px;
+  }
+  #theme-lanart h1 { font-size: 17px; }
+  #theme-lanart .theme-lanart-channel-deck { padding: 3px 8px; }
+  #theme-lanart .topbar { height: 30px; }
+  #theme-lanart .theme-lanart-main { grid-row: 3; margin: 6px 8px; }
+  #theme-lanart .theme-lanart-directory {
+    position: fixed;
+    z-index: 45;
+    top: 136px;
+    bottom: 54px;
+    left: 10px;
+    margin: 0;
+    width: min(310px, calc(100vw - 20px));
+    background: var(--lanart-surface-solid);
+    visibility: hidden;
+    pointer-events: none;
+  }
+  #theme-lanart[data-directory='open'] .theme-lanart-directory {
+    visibility: visible;
+    pointer-events: auto;
+  }
+  #theme-lanart .theme-lanart-footer { padding-inline: 10px; }
+  #theme-lanart .theme-lanart-footer-meta { display: none; }
+  #theme-lanart [data-deepscord-slot='self'] { width: 100%; }
+  #theme-lanart .media-expanded { inset: 132px 0 48px; }
+}
+
+/* Pause & Reduced Motion Guardrails */
+html[data-ui-hidden='true'] #theme-lanart * {
+  animation-play-state: paused !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  #theme-lanart *, #theme-lanart *::before, #theme-lanart *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  #theme-lanart .lanart-orbit-comet { display: none; }
+}
+#theme-lanart #interfaceChannelIndex { display: none; }
+@media (min-width: 1151px) {
+  :root:has(#app.members-hidden) #theme-lanart { grid-template-columns: 236px minmax(0, 1fr); }
+  :root:has(#app.members-hidden) #theme-lanart .theme-lanart-members { display: none; }
+  :root:has(#app.members-hidden) #theme-lanart .theme-lanart-main { margin-right: 10px; }
+}

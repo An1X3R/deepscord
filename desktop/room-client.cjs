@@ -2,6 +2,7 @@
 'use strict';
 
 const fs = require('node:fs');
+const {createStaticAssets}=require('./static-assets.cjs');
 const path = require('node:path');
 const http = require('node:http');
 const net = require('node:net');
@@ -9,31 +10,13 @@ const tls = require('node:tls');
 const { X509Certificate, randomBytes, createHash } = require('node:crypto');
 
 /** @typedef {{origin:string,fingerprint:string|null}} Connection */
-/** @typedef {{data:Buffer,mime:string}} Asset */
+
 /** @typedef {{origin:string,url:string,stop:()=>Promise<void>}} RoomClient */
 const TIMEOUT = 10000;
 const MAX_CONNECTIONS = 32;
 const MAX_RESPONSE = 1024 * 1024;
-/** @type {Readonly<Record<string,string>>} */
-const MIME = { '.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.mjs':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png','.avif':'image/avif','.ico':'image/x-icon','.woff2':'font/woff2','.wav':'audio/wav','.mp3':'audio/mpeg','.wasm':'application/wasm' };
 
-/** @param {string} directory @returns {Map<string,Asset>} */
-function readAssets(directory) {
-  /** @type {Map<string,Asset>} */ const result = new Map();
-  /** @param {string} current @returns {void} */
-  function read(current) {
-    for (const entry of fs.readdirSync(current, { withFileTypes:true })) {
-      const filename = path.join(current, entry.name);
-      if (entry.isDirectory()) read(filename);
-      else if (entry.isFile()) result.set('/' + path.relative(directory, filename).split(path.sep).join('/'), { data:fs.readFileSync(filename),mime:MIME[path.extname(filename)] || 'application/octet-stream' });
-      else throw new TypeError('Packaged room assets must contain only regular files and directories');
-    }
-  }
-  if (!fs.lstatSync(directory).isDirectory() || fs.lstatSync(directory).isSymbolicLink()) throw new TypeError('Packaged room assets directory must be a regular directory');
-  read(directory);
-  if (!result.has('/index.html')) throw new Error('Packaged room interface is missing index.html');
-  return result;
-}
+
 
 /** @param {Connection} connection @returns {URL} */
 function upstreamOrigin(connection) {
@@ -80,7 +63,7 @@ function screenPath(target) { return /^\/screen-sfu\/rtc(?:\/[a-zA-Z0-9_-]+)*(?:
 async function startRoomClient(options) {
   const upstream = upstreamOrigin(options.connection);
   const fingerprint = options.connection.fingerprint;
-  const assets = readAssets(path.join(options.serverDirectory,'public'));
+  const assets = createStaticAssets(path.join(options.serverDirectory,'public'));
   /** @type {Set<net.Socket>} */ const remoteSockets = new Set();
   /** @type {Set<net.Socket>} */ const localSockets = new Set();
   /** @type {Set<http.ClientRequest>} */ const requests = new Set();
@@ -144,10 +127,7 @@ async function startRoomClient(options) {
       return;
     }
     const pathname = target.split('?')[0];
-    const asset = assets.get(pathname === '/' ? '/index.html' : pathname);
-    if (!asset) { response.writeHead(404); response.end(); return; }
-    response.writeHead(200,{ 'Content-Type':asset.mime,'Content-Length':asset.data.length });
-    response.end(request.method === 'HEAD' ? undefined : asset.data);
+    void assets.serve(response,pathname,request.method || 'GET').catch(error=>{console.error('room_asset_cleanup_failed',{message:error.message});response.destroy();});
   });
   server.maxConnections = MAX_CONNECTIONS;
   server.on('connection', socket => {
@@ -190,6 +170,7 @@ async function startRoomClient(options) {
   return { origin,url:origin + '/',stop:() => {
     if (stopped) return stopped;
     stopping = true;
+    assets.close();
     stopped = new Promise((resolve,reject) => {
       server.close(error => error ? reject(error) : resolve());
       for (const request of requests) request.destroy();

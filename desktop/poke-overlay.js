@@ -32,12 +32,13 @@ function renderHit(hit) {
   marker.dataset.fromUserId = hit.fromUserId;
   const color = previousColor || identityColor(hit.fromUserId, [...markers.values()].map((entry) => entry.color));
   marker.style.setProperty('--poke-identity', color);
-  marker.dataset.heat = String(hit.combo >= 5 ? 3 : hit.combo >= 3 ? 2 : 1);
+  marker.dataset.heat = String(hit.combo >= 8 ? 4 : hit.combo >= 5 ? 3 : hit.combo >= 3 ? 2 : 1);
+  marker.dataset.gesture = hit.gesture === 'middle' ? 'middle' : 'point';
   marker.style.left = `${hit.nx * 100}%`; marker.style.top = `${hit.ny * 100}%`;
   const target = document.createElement('span'); target.className = 'poke-target'; marker.append(target);
   const finger = document.createElement('div'); finger.className = 'poke-finger';
-  finger.textContent = '👆'; marker.append(finger);
-  const badge = document.createElement('span'); badge.className = 'poke-badge'; badge.textContent = `${hit.pokerName} ×${hit.combo}`; marker.append(badge);
+  finger.textContent = hit.gesture === 'middle' ? '🖕' : '👆'; marker.append(finger);
+  const badge = document.createElement('span'); badge.className = 'poke-badge'; badge.textContent = `${hit.pokerName} · ×${hit.combo}${hit.gesture === 'middle' ? ' 急了!' : ''}`; marker.append(badge);
   surface.append(marker);
   markers.set(hit.fromUserId, { element: marker, color, timer: setTimeout(() => removeMarker(hit.fromUserId), 1600) });
 }

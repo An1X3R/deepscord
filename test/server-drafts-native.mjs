@@ -123,7 +123,7 @@ try{
   check('local-draft-retained-after-delete',fs.existsSync(path.join(serverDirectory,'draft.json')));
   check('all-new-publication-commands-use-null-domain',journal().events.filter(event=>(event.command.type==='putInteraction'||event.command.type==='deleteInteraction')&&('interactionId' in event.command?event.command.interactionId:event.command.interaction.id)===draft.id).every(event=>'domainId' in event.command&&event.command.domainId===null));
   await page.eval("document.getElementById('customizationInteractionDrafts').scrollIntoView({block:'center',behavior:'instant'})");await page.screenshot(path.join(output,'draft-deleted-native.png'));observations.push({roomId,serverDirectory,otherRoomId,serverEvents:journal().events.length,focusEvents:await page.eval('window.acceptanceFocusEvents')});
-  await click(page,'customizationClose');await click(page,'serverMenuBtn');await click(page,'themeCustomizationMenuBtn');
+  await click(page,'customizationClose');await page.eval('window.echo.actions.openSettings()');await click(page,'themeCustomizationMenuBtn');
   await page.waitFor("!!document.getElementById('customizationInterfacePreset')&&!document.getElementById('customizationThemeSave').disabled",{timeout:10000,interval:50,label:'native disk scheme selector ready'});
   await click(page,'customizationInterfacePreset');
   check('native-full-theme-manifests-listed',await page.eval("!!document.querySelector('#customizationInterfacePresetList [data-value=industrial-open]')&&!!document.querySelector('#customizationInterfacePresetList [data-value=constructivist-open]')"));
@@ -140,13 +140,13 @@ try{
   await mountedPackage(page);check('native-full-theme-reload-restores-saved-selection',await page.eval("window.echo.getState().settings.interfaceSelection?.scheme.id==='constructivist-open'&&!!window.echo.getState().settings.interfaceSelection.scheme.presentation.script"));
   await page.waitFor("document.getElementById('theme-constructivist-server').textContent===document.getElementById('connectionServerName').textContent",{timeout:10000,interval:50,label:'native isolated script receives current server state'});
   await page.screenshot(path.join(output,'native-full-theme-reloaded.png'));await trustedClick(page,'theme-constructivist-settings');
-  await page.waitFor("!!document.getElementById('profileName')&&!!document.getElementById('audioSettingsDone')",{timeout:7000,interval:50,label:'trusted native theme action opens real settings'});checks.push('native-full-theme-trusted-settings-command');
+  await page.waitFor("!!document.getElementById('profileName')&&!!document.getElementById('softwareSettingsDone')",{timeout:7000,interval:50,label:'trusted native theme action opens real settings'});checks.push('native-full-theme-trusted-settings-command');
   for(const kind of ['interfaces','interactions']){
     await click(page,'developerGuide-'+kind);const directory=path.join(profile,'customization',kind);
-    await page.waitFor("!!document.getElementById('audioSettingsDone')",{timeout:5000,interval:50,label:'settings remains open after native guide action'});
+    await page.waitFor("!!document.getElementById('softwareSettingsDone')",{timeout:5000,interval:50,label:'settings remains open after native guide action'});
     check('native-current-guide-byte-identical-'+kind,fs.readFileSync(path.join(directory,'DEVELOPMENT.md')).equals(fs.readFileSync(path.join(server,'public/customization',kind,'DEVELOPMENT.md'))));
   }
-  await click(page,'audioSettingsDone');await page.screenshot(path.join(output,'native-full-theme-command-complete.png'));check('no-renderer-exceptions',exceptions.length===0);passed=true;
+  await click(page,'softwareSettingsDone');await page.screenshot(path.join(output,'native-full-theme-command-complete.png'));check('no-renderer-exceptions',exceptions.length===0);passed=true;
  })(),new Promise((resolve,reject)=>{timer=setTimeout(()=>reject(new Error('Native server drafts acceptance exceeded 120 seconds')),120000);})]);
 }catch(error){
  for(const [index,page] of pages.entries())if(page.ws.readyState===WebSocket.OPEN){observations.push({failureDom:await page.eval("({drafts:document.getElementById('customizationInteractionDrafts')?.textContent,status:document.getElementById('customizationStatus')?.textContent,focusEvents:window.acceptanceFocusEvents,focused:document.hasFocus()})")});await page.screenshot(path.join(output,'failure-'+index+'.png'));}

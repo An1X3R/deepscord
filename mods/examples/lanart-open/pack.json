@@ -1,0 +1,13 @@
+{
+  "format": 1,
+  "id": "lanart-open",
+  "name": "Lanart · 测绘与星轨双模态",
+  "version": "1.0.0",
+  "kind": "interfaces",
+  "entries": [
+    {
+      "file": "lanart-open.json",
+      "name": "Lanart · 测绘与星轨双模态"
+    }
+  ]
+}

@@ -466,7 +466,7 @@ function runUnderElectron() {
       }, 15000, 100);
       const stableTrackId = await alice.webContents.executeJavaScript('window.echo.getVoiceStats().capture.outputTrackId', true);
       assert(typeof stableTrackId === 'string', 'Production capture has no output track');
-      await alice.webContents.executeJavaScript('window.echo.actions.openSettings(); true', true);
+      await alice.webContents.executeJavaScript('window.echo.actions.openVoiceSettings(); true', true);
       for (const preferences of [
         { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
         { echoCancellation: false, noiseSuppression: true, autoGainControl: false },

@@ -1,4 +1,5 @@
 import {reconcileMarkup} from './dom-reconcile.js';
+import {createNotificationSounds} from './notification-sounds.js';
 import {needsGovernanceCheckpoint} from './governance-checkpoint.js';
 /* Deepscord — 主应用 */
 
@@ -8,7 +9,7 @@ import {installPresentationVisibility,isPresentationHidden} from './presentation
 import { Socket } from './ws.js';
 import { VoiceEngine } from './voice.js';
 import { parseNetworkConfig, parsePublicConfig } from './network-protocol.js';
-import { openSettingsPanel, loadSettings, saveSettings, keyLabel } from './settings.js';
+import { openSoftwareSettingsPanel, openVoiceSettingsPanel, loadSettings, saveSettings, keyLabel } from './settings.js';
 import { openModal, confirmDialog, promptDialog, toast, toggleMembersPanel } from './ui.js';
 import { loadProfile, saveProfile, createProfile, profilePayload } from './profile.js';
 import { createMediaUI, attachQuickVolume } from './media-ui.js';
@@ -21,6 +22,8 @@ import { parseServerState, parseIdentityChallenge, canPerform, canModerateMember
 import { createChatView, parseChatMessage } from './chat-view.js';
 import {createChatMediaClient} from './chat-media-client.js';
 import {createChatMedia} from './chat-media.js';
+import {createReplyComposer} from './reply-composer.js';
+import {createChatUnreadStore} from './chat-unread.js';
 import {createBrowserIdentity} from './browser-identity.js';
 import {parseReactions,mediaId,mediaInteger,mediaObject,MEDIA_LIMITS} from './chat-protocol.js';
 import { createPokeAudio } from './poke-audio.js';
@@ -79,9 +82,12 @@ let socket = null;
 let engine = null;
 let booted = false;
 let soundCtx = null;
+const notificationSounds=createNotificationSounds({reportError:reportNotificationError});
 let networkRefresh = null;
 let voiceJoinSequence = 0;
 let pttPrevMuted = null;
+let nativePttSignature = '';
+let nativePttQueue = Promise.resolve();
 let mediaRenderScheduled = false;
 let linkMeasurementPending = false;
 let chatView = null;
@@ -99,6 +105,9 @@ let contentConnectionGeneration=0;
 let contentLocalMigration=false;
 let contentMigrating=false;
 let roomDescriptor=null;
+let unreadStore=createChatUnreadStore({storage:localStorage});
+let unreadHistoryGeneration=-1;
+/** @type {ReturnType<typeof createReplyComposer>|null} */let replyComposer=null;
 let transportContext=null;
 /** @type {Set<{digest:string,resolve:()=>void,reject:(error:Error)=>void,timer:ReturnType<typeof setTimeout>}>} */const governanceWaiters=new Set();
 /** @type {import('./server-governance-ui.js').ServerState|null} */
@@ -269,8 +278,9 @@ const radioClient=createRadioClient({
   getVolume:()=>state.settings.radioVolume,saveVolume:volume=>{state.settings.radioVolume=volume;saveSettings(state.settings);},
   send:frame=>state.roomReady && socket?.send(frame)===true,modal:openModal,
   metadataBridge:window.deepscord?.inspectRadioStation?window.deepscord:null,reportError:reportNetworkError,notify:message=>toast(message,'info'),
+  onOverlayChange:syncVoiceOverlay,
 });
-const desktopPoke = createDesktopPoke({ getSession: () => engine?.poke.state().sessionId ?? null, getState: () => engine?.poke.state() ?? { sessionId: null, peers: [], requests: [], authorized: [] }, getName: id => state.users.get(id)?.name ?? '成员', respond: decision => pokeAction(() => { if (decision.approved) engine?.poke.approve(decision.userId, decision.requestId); else engine?.poke.reject(decision.userId, decision.requestId); }), reportError: reportNetworkError, notify: message => toast(message, 'info') });
+const desktopPoke = createDesktopPoke({ getSession: () => engine?.poke.state().sessionId ?? null, getState: () => engine?.poke.state() ?? { sessionId: null, allowFunnyGestures: true, peers: [], requests: [], authorized: [] }, getName: id => state.users.get(id)?.name ?? '成员', respond: decision => pokeAction(() => { if (decision.approved) engine?.poke.approve(decision.userId, decision.requestId); else engine?.poke.reject(decision.userId, decision.requestId); }), reportError: reportNetworkError, notify: message => toast(message, 'info') });
 /** @param {()=>void} action */
 function pokeAction(action) { try { action(); } catch (error) { reportNetworkError(error instanceof Error ? error : new Error(String(error))); } }
 const musicCapture = new ProcessAudioCapture(reportNetworkError, () => {
@@ -324,13 +334,15 @@ const mediaUI = createMediaUI({
   },
   getPeerVolume(id) { return engine?.getPeerVolume(id) ?? 100; },
   poke: {
-    getState: () => engine?.poke.state() ?? { sessionId: null, peers: [], requests: [], authorized: [] },
+    getState: () => engine?.poke.state() ?? { sessionId: null, allowFunnyGestures: true, peers: [], requests: [], authorized: [] },
     request: id => pokeAction(() => engine?.poke.request(id)),
     respond: (id, requestId, approved) => pokeAction(() => { if (approved) engine?.poke.approve(id, requestId); else engine?.poke.reject(id, requestId); }),
     revoke: id => pokeAction(() => engine?.poke.revoke(id)),
     revokeAll: () => pokeAction(() => engine?.poke.revokeAll()),
     hit: (id, nx, ny, boom) => pokeAction(() => engine?.poke.hit(id, nx, ny, boom)),
     getName: id => state.users.get(id)?.name ?? '成员',
+    getFunnyGestures: () => engine?.poke.state().allowFunnyGestures ?? true,
+    setFunnyGestures: allowed => pokeAction(() => engine?.poke.setFunnyGestures(allowed)),
     getAudio: () => pokeAudio.getSettings(),
     setAudio: settings => pokeAction(() => pokeAudio.setSettings(settings)),
   },
@@ -353,14 +365,52 @@ async function persistIdentity() {
   saveSettings(state.settings);
 }
 
+function syncGlobalPTT() {
+  if (!window.deepscord?.updateGlobalPTT) return;
+  const config = { connected: Boolean(engine?.inVoice), mode: state.settings.mode, key: state.settings.pttKey };
+  const signature = JSON.stringify(config);
+  if (signature === nativePttSignature) return;
+  nativePttSignature = signature;
+  engine?.setPTTDown(false);
+  nativePttQueue = nativePttQueue.then(() => window.deepscord.updateGlobalPTT(config)).catch(error => {
+    engine?.setPTTDown(false);
+    reportNetworkError(error);
+  });
+}
+window.addEventListener('deepscord-settings-changed', syncGlobalPTT);
+
+/** @type {import('../../desktop/desktop-schema.cjs').OverlayMember[]|null} */
+let overlaySnapshot = null;
+let overlayActivity = '';
+/** @returns {void} */
+function updatePresentationConsumers() {
+  engine?.setPresentationActive(!isPresentationHidden() || state.desktopSettings?.overlay.enabled === true);
+}
+/** @param {import('../../desktop/desktop-schema.cjs').DesktopSettings} settings @returns {void} */
+function receiveDesktopSettings(settings) {
+  if (state.desktopSettings?.overlay.enabled !== settings.overlay.enabled) {overlaySnapshot=null;overlayActivity='';}
+  state.desktopSettings = settings;
+  updatePresentationConsumers(); syncVoiceOverlay();
+}
 function syncVoiceOverlay() {
-  if (!window.deepscord?.updateVoiceOverlay) return;
+  if (!window.deepscord?.updateVoiceOverlay || !state.desktopSettings?.overlay.enabled) { overlaySnapshot = null; overlayActivity = ''; return; }
   const connected = Boolean(engine?.inVoice);
   const members = connected ? usersInChannel(state.voiceChannelId).map((user) => ({
     id: user.id, name: user.name, color: user.color, avatar: user.avatar || null,
     speaking: state.speaking.has(user.id), muted: user.serverMuted===true || (user.id === state.selfId ? engine.muted : user.muted === true),
+    screen: user.id === state.selfId ? engine.screenStream !== null : engine.peers.get(user.id)?.screenSharing === true,
   })) : [];
-  window.deepscord.updateVoiceOverlay({ connected, members }).catch(reportNetworkError);
+  const radioTitle = radioClient.getOverlayTitle();
+  const activity = { connected, members:members.map(({id,speaking,muted,screen})=>({id,speaking,muted,screen})), radioTitle };
+  const signature = JSON.stringify(activity);
+  const sameMembers = overlaySnapshot && members.length === overlaySnapshot.length && members.every((member,index)=>{
+    const previous = overlaySnapshot[index];
+    return member.id === previous.id && member.name === previous.name && member.color === previous.color && member.avatar === previous.avatar;
+  });
+  if (sameMembers && signature === overlayActivity) return;
+  const operation = sameMembers ? window.deepscord.updateVoiceOverlayDelta(activity) : window.deepscord.updateVoiceOverlay({connected,members,radioTitle});
+  overlaySnapshot = members; overlayActivity = signature;
+  operation.catch(error=>{overlaySnapshot=null;overlayActivity='';reportNetworkError(error);});
 }
 
 /* -------------------------------------------------------------------- */
@@ -413,12 +463,22 @@ function avatarHtml(user, size = 32, cls = '') {
   return `<span class="avatar ${cls}" style="--av-size:${size}px;--av-color:${esc(color)}">${avatar}</span>`;
 }
 
-function playTone(kind) {
+function reportNotificationError(error){console.warn('notification_sound_failed',{message:error.message});toast(error.message,'error',5000);}
+
+async function chooseNotificationSound(kind){
+  const name=await notificationSounds.choose(kind);
+  if(name===null)return;
+  await notificationSounds.play(kind,{volume:Math.min(1,Math.max(0,state.settings.outVolume/100)),outputDeviceId:state.settings.outputDeviceId});
+  toast((kind==='join'?'进入':'退出')+'提示音已保存：'+name,'success');
+}
+
+async function playTone(kind) {
   if (state.settings.sounds === false) return;
   try {
+    if((kind==='join'||kind==='leave') && await notificationSounds.play(kind,{volume:Math.min(1,Math.max(0,state.settings.outVolume/100)),outputDeviceId:state.settings.outputDeviceId}))return;
     const Ctx = window.AudioContext || window.webkitAudioContext;
     if (!soundCtx) soundCtx = new Ctx();
-    if (soundCtx.state === 'suspended') soundCtx.resume().catch(() => {});
+    if (soundCtx.state === 'suspended') await soundCtx.resume();
     const now = soundCtx.currentTime;
     const make = (freq, start, dur, vol = 0.06, type = 'sine') => {
       const osc = soundCtx.createOscillator();
@@ -443,9 +503,7 @@ function playTone(kind) {
     } else if (kind === 'error') {
       make(220, 0, 0.18, 0.05, 'square');
     }
-  } catch (_) {
-    /* ignore */
-  }
+  } catch (error) {reportNotificationError(error instanceof Error?error:new Error(String(error)));}
 }
 
 function reportNetworkError(error) {
@@ -515,6 +573,16 @@ async function setupDirectInvitation() {
 /* -------------------------------------------------------------------- */
 
 async function boot() {
+  if(window.deepscord?.getChatUnread){
+    let saved=JSON.stringify(await window.deepscord.getChatUnread());
+    let saveQueued=false;
+    unreadStore=createChatUnreadStore({storage:{getItem:()=>saved,setItem:(_key,value)=>{
+      saved=value;
+      if(saveQueued)return;
+      saveQueued=true;
+      queueMicrotask(()=>{saveQueued=false;window.deepscord.saveChatUnread(JSON.parse(saved)).catch(reportNetworkError);});
+    }}});
+  }
   if(window.deepscord?.getConnectionContext)transportContext=await window.deepscord.getConnectionContext();
   if(window.deepscord?.getClientPreferences){const preferences=await window.deepscord.getClientPreferences();if(preferences.settings){localStorage.setItem('echo.settings',JSON.stringify(preferences.settings));state.settings=loadSettings();}if(preferences.lastChannel)store.set('echo.lastChannel',preferences.lastChannel);}
   dom.rail = $('#serverRail');
@@ -532,6 +600,7 @@ async function boot() {
   dom.messages = $('#messages');
   dom.msgInput = $('#msgInput');
   dom.composer = $('#composer');
+  replyComposer=createReplyComposer($('#composerWrap'),dom.msgInput);
   dom.membersScroll = $('#membersScroll');
   dom.connPill = $('#connPill');
   dom.selfPanel = $('#selfPanel');
@@ -539,6 +608,8 @@ async function boot() {
   state.profile = await loadProfile();
   if (state.profile) Object.assign(state.settings, { name: state.profile.name, color: state.profile.color, avatar: state.profile.avatar });
   if (window.deepscord?.getDesktopSettings) state.desktopSettings = await window.deepscord.getDesktopSettings();
+  window.deepscord?.onDesktopSettingsChanged?.(receiveDesktopSettings);
+  document.addEventListener('deepscord:visibility',updatePresentationConsumers);
   const params = new URLSearchParams(location.search);
   const nameParam = params.get('name');
   if (nameParam) state.settings.name = nameParam.trim().slice(0, 24);
@@ -685,12 +756,13 @@ function startApp() {
   setupShortcuts();
   setupPttMouse();
   window.addEventListener('beforeunload', () => {
+    notificationSounds.destroy();
     disposePresentationVisibility();
     pokeAudio.close().catch(reportNetworkError);
     disposeInterfaceProfile();
     radioClient.dispose();
     interactionUI.destroy(); interactionRenderer.destroy(); interactionAudio.close().catch(reportNetworkError);
-    chatMedia?.destroy();chatView?.destroy();browserIdentity?.destroy();chatMediaClient.reset();
+    chatMedia?.destroy();chatView?.destroy();replyComposer?.destroy();browserIdentity?.destroy();chatMediaClient.reset();
     try {
       if (engine?.inVoice) { socket.send({ t: 'leaveVoice' }); engine.leave(); }
       socket.close();
@@ -698,16 +770,23 @@ function startApp() {
       /* ignore */
     }
   });
-  const disposePresentationVisibility=installPresentationVisibility(window.deepscord?.getWindowVisibility?window.deepscord:null,()=>{renderAll();updateNetworkStatus();},reportNetworkError);
+  let lastLinkMeasurement=0;
+  const disposePresentationVisibility=installPresentationVisibility(window.deepscord?.getWindowVisibility?window.deepscord:null,()=>{lastLinkMeasurement=0;renderAll();void refreshLinkMeasurements().catch(reportNetworkError);},reportNetworkError);
   setInterval(() => {if(!isPresentationHidden())updateSelfPanel();}, 5000);
-  setInterval(async () => {
+  /** @returns {Promise<void>} */
+  async function refreshLinkMeasurements() {
     if(linkMeasurementPending)return;
     linkMeasurementPending=true;
     try {
-      if (engine?.peers.size) await engine.measureLinks();
+      engine?.enforceLinkPolicies();
+      if (engine?.peers.size && (!isPresentationHidden() || performance.now()-lastLinkMeasurement>=15000)) {
+        lastLinkMeasurement=performance.now();
+        await engine.measureLinks();
+      }
       if(!isPresentationHidden()){updateNetworkStatus();updateConnPill();}
     } finally {linkMeasurementPending=false;}
-  }, 2000);
+  }
+  setInterval(()=>{void refreshLinkMeasurements().catch(reportNetworkError);}, 2000);
 }
 
 /* -------------------------------------------------------------------- */
@@ -737,7 +816,7 @@ function onConnStatus(status) {
   if (status === 'disconnected' || status === 'reconnecting' || status === 'closed') {
     radioClient.disconnect();authorKeys.clear();
     contentConnectionGeneration++;
-    chatMedia?.reset();chatMediaClient.reset();reactionActorId=null;
+    chatMedia?.suspend();chatMediaClient.reset();reactionActorId=null;
     for(const waiter of governanceWaiters){clearTimeout(waiter.timer);waiter.reject(new DOMException('服务器连接已变化','AbortError'));}governanceWaiters.clear();
     roomSyncGeneration+=1;roomSyncRound=null;
     governanceGeneration+=1;governanceCheckpointPending=false;governanceCheckpointAttempt='';governanceUpdateSequence+=1;governanceViewDomainId=null;serverGovernance=null;identityStatus='';
@@ -787,6 +866,8 @@ function onServerEvent(msg) {
     case 'messageDeleted': {
       if(typeof msg.channelId !== 'string' || typeof msg.messageId !== 'string') return reportNetworkError(new TypeError('Invalid message deletion event'));
       state.messages.set(msg.channelId,(state.messages.get(msg.channelId)||[]).filter(message=>message.id!==msg.messageId));
+      if(roomDescriptor?.roomId)unreadStore.remove(roomDescriptor.roomId,msg.channelId,msg.messageId);
+      renderRail();renderSidebar();
       renderMessages();return;
     }
     case 'roomSyncOffer':
@@ -824,7 +905,7 @@ function onServerEvent(msg) {
       if (!engine?.inVoice || !state.users.has(msg.from)) return;
       return engine.handleSignal(msg.from, msg.data).catch(reportNetworkError);
     case 'message':
-      {const generation=contentConnectionGeneration;const task=contentMessages.then(async()=>{const message=await contentClient.openMessage(msg.channelId,parseChatMessage(msg.message));if(generation===contentConnectionGeneration)onMessage({channelId:msg.channelId,message});});contentMessages=task.catch(error=>reportNetworkError(error));return contentMessages;}
+      {const generation=contentConnectionGeneration;const task=contentMessages.then(async()=>{const message=await contentClient.openMessage(msg.channelId,parseChatMessage(msg.message));if(generation===contentConnectionGeneration)onIncomingMessage({channelId:msg.channelId,message});});contentMessages=task.catch(error=>reportNetworkError(error));return contentMessages;}
     case 'servers':
       return onServers(msg.servers);
     case 'authFailed':
@@ -874,6 +955,7 @@ async function acceptServerState(value) {
   }
   serverGovernance={...snapshot,policy:{...snapshot.policy,emojis:snapshot.policy.emojis?.map(emoji=>({...emoji,asset:mapContentAsset(contentClient.policy,emoji.asset)})),...(snapshot.policy.customization ? {customization:snapshot.policy.customization.map(scope=>({...scope,interactions:scope.interactions.map(entry=>({...entry,thumbnail:entry.thumbnail ? mapContentAsset(contentClient.policy,entry.thumbnail) : null}))}))} : {})}};
   reactionActorId=actor;authorKeys=titleKeys;
+  initializeUnreadHistory();
   if(snapshot.selfKey===snapshot.policy.ownerKey && needsGovernanceCheckpoint(snapshot.journal) && window.deepscord?.signGovernanceCheckpoint && !governanceCheckpointPending && governanceCheckpointAttempt!==snapshot.journal.digest){
     governanceCheckpointPending=true;governanceCheckpointAttempt=snapshot.journal.digest;
     window.deepscord.signGovernanceCheckpoint().then(frame=>{
@@ -938,7 +1020,7 @@ async function submitGovernance(command) {
 /** @returns {Promise<Awaited<ReturnType<typeof createBrowserIdentity>>>} */
 function getBrowserIdentity(){if(!browserIdentityPromise)browserIdentityPromise=createBrowserIdentity().then(identity=>{browserIdentity=identity;return identity;});return browserIdentityPromise;}
 /** @returns {import('./chat-media.js').MediaContext} */
-function chatMediaContext(){return{roomId:serverGovernance?.server.id ?? null,channelId:activeChannel()?.type==='text' ? state.activeChannelId : null,domainId:state.activeServerId,selfKey:serverGovernance?.selfKey ?? null,actorId:reactionActorId,domains:state.servers.map(domain=>({id:domain.id,name:domain.name})),policy:serverGovernance?.policy ?? null};}
+function chatMediaContext(){return{roomId:roomDescriptor?.roomId ?? null,channelId:activeChannel()?.type==='text' ? state.activeChannelId : null,domainId:state.activeServerId,selfKey:serverGovernance?.selfKey ?? null,actorId:reactionActorId,domains:state.servers.map(domain=>({id:domain.id,name:domain.name})),policy:serverGovernance?.policy ?? null};}
 
 function openServerGovernance() {
   openMemberGovernance(null);
@@ -1173,7 +1255,7 @@ function onUserUpdated(user) {
   renderStage();
   renderSidebar();
   renderTopbar();
-  if (prev?.name !== user.name) renderMessages();
+  if (prev?.name !== user.name || prev?.color !== user.color || prev?.avatar !== user.avatar) renderMessages();
 }
 
 function onVoiceState({ userId, channelId, serverMuted }) {
@@ -1216,6 +1298,52 @@ function onVoiceState({ userId, channelId, serverMuted }) {
   renderSidebar();
 }
 
+/** @returns {import('./chat-unread.js').SelfIdentity} */
+function unreadIdentity() {
+  return {memberKey:serverGovernance?.selfKey??null,userId:state.selfId??null};
+}
+/** @param {import('./chat-protocol.js').ChatMessage} message @returns {import('./chat-unread.js').UnreadMessage} */
+function unreadMessage(message) {
+  const authorKey=message.authorId===reactionActorId ? serverGovernance?.selfKey :
+    authorKeys.get(message.authorId)??serverGovernance?.members.find(member=>member.userId===message.userId)?.memberKey;
+  return {...message,authorKey};
+}
+/** @returns {void} */
+function initializeUnreadHistory() {
+  if(!roomDescriptor?.roomId||!serverGovernance?.selfKey||unreadHistoryGeneration===contentConnectionGeneration)return;
+  for(const domain of state.servers) {
+    for(const channel of domain.channels) {
+      if(channel.type==='text')unreadStore.history(roomDescriptor.roomId,channel.id,(state.messages.get(channel.id)??[]).map(unreadMessage),unreadIdentity());
+    }
+  }
+  unreadHistoryGeneration=contentConnectionGeneration;
+  markVisibleChannelRead();renderRail();renderSidebar();
+}
+/** @param {string} channelId @returns {import('./chat-unread.js').UnreadState} */
+function channelUnread(channelId) {
+  return roomDescriptor?.roomId ? unreadStore.state(roomDescriptor.roomId,channelId) : {unread:false,mentions:0,muted:false};
+}
+/** @param {number} count @returns {string} */
+function mentionBadge(count) {
+  return count ? `<span class="chat-mention-count" aria-label="${count} 条提及">@${count>99?'99+':count}</span>` : '';
+}
+/** @returns {void} */
+function markVisibleChannelRead() {
+  const channel=activeChannel();
+  if(!roomDescriptor?.roomId||unreadHistoryGeneration!==contentConnectionGeneration||channel?.type!=='text'||document.hidden||!document.hasFocus()||!dom.messages||dom.messages.scrollHeight-dom.messages.scrollTop-dom.messages.clientHeight>=120)return;
+  const before=channelUnread(channel.id);
+  unreadStore.markRead(roomDescriptor.roomId,channel.id);
+  if(before.unread||before.mentions){renderRail();renderSidebar();}
+}
+/** @param {{channelId:string,message:import('./chat-protocol.js').ChatMessage}} event @returns {void} */
+function onIncomingMessage({channelId,message}) {
+  const result=roomDescriptor?.roomId&&unreadHistoryGeneration===contentConnectionGeneration ?
+    unreadStore.observe(roomDescriptor.roomId,channelId,unreadMessage(message),unreadIdentity()) : null;
+  onMessage({channelId,message});
+  markVisibleChannelRead();renderRail();renderSidebar();
+  if(result?.fresh&&!result.muted&&(channelId!==state.activeChannelId||document.hidden||!document.hasFocus()))playTone('message');
+}
+
 function onMessage({ channelId, message: value }) {
   let message=parseChatMessage(value);
   const list = state.messages.get(channelId) || [];
@@ -1225,9 +1353,6 @@ function onMessage({ channelId, message: value }) {
   state.messages.set(channelId, list);
   if (channelId === state.activeChannelId) {
     renderMessages();
-  }
-  if (previous<0 && message && message.userId !== state.selfId && message.system !== true) {
-    if (channelId !== state.activeChannelId || document.hidden) playTone('message');
   }
 }
 
@@ -1314,6 +1439,7 @@ function onVoiceEvent(ev) {
       updateSelfPanel();
       return;
     case 'left':
+      syncGlobalPTT();
       if (musicCapture.context || musicCapture.starting) musicCapture.stop().catch(reportNetworkError);
       mediaUI.destroy();
       syncVoiceOverlay();
@@ -1372,12 +1498,14 @@ function renderRail() {
   const html = [];
   for (const srv of state.servers) {
     const active = srv.id === state.activeServerId;
+    const mentions=srv.channels.filter(channel=>channel.type==='text').reduce((count,channel)=>count+channelUnread(channel.id).mentions,0);
     const color = srv.color || colorFor(srv.name);
     html.push(`
       <button class="rail-item ${active ? 'active' : ''}" data-server-id="${esc(srv.id)}" aria-label="域 · ${esc(srv.name)}" title="域 · ${esc(srv.name)}">
         <span class="rail-indicator"></span>
         <span class="rail-icon" style="--srv-color:${esc(color)}">${esc(srv.icon || initials(srv.name))}</span>
         <span class="rail-tip">${esc(srv.name)}</span>
+        ${mentionBadge(mentions)}
       </button>
     `);
   }
@@ -1429,6 +1557,7 @@ function renderSidebar() {
 
   const channelHtml = (ch) => {
     const active = ch.id === state.activeChannelId;
+    const unread=ch.type==='text'?channelUnread(ch.id):{unread:false,mentions:0,muted:false};
     const joined = ch.id === state.voiceChannelId;
     const inChannel = usersInChannel(ch.id);
     const limit = Number(ch.userLimit) || 0;
@@ -1442,10 +1571,11 @@ function renderSidebar() {
       }
     }
     return `
-      <div class="channel-row" data-channel-row="${esc(ch.id)}"><button class="channel ${active ? 'active' : ''} ${joined ? 'joined' : ''}" data-channel-id="${esc(ch.id)}" data-channel-type="${esc(ch.type)}" title="${esc(ch.name)}${ch.type !== 'text' ? '（双击进入语音）' : ''}">
+      <div class="channel-row" data-channel-row="${esc(ch.id)}"><button class="channel ${active ? 'active' : ''} ${joined ? 'joined' : ''} ${unread.unread?'has-unread':''} ${unread.muted?'is-muted':''}" data-channel-id="${esc(ch.id)}" data-channel-type="${esc(ch.type)}" title="${esc(ch.name)}${ch.type !== 'text' ? '（双击进入语音）' : ''}">
         <span class="ch-icon">${icon(ch.type==='radio' ? 'music' : ch.type !== 'text' ? 'volume' : 'hash', 18)}</span>
         <span class="ch-name">${esc(ch.name)}</span>
         ${countBadge}
+        ${mentionBadge(unread.mentions)}
         ${joined ? '<span class="ch-live"></span>' : ''}
       </button>
       <button id="channel-settings-${esc(ch.id)}" class="channel-settings" data-channel-settings="${esc(ch.id)}" aria-label="频道操作：${esc(ch.name)}" aria-haspopup="menu" title="频道设置与分享">${icon('settings',14)}</button></div>
@@ -1612,6 +1742,7 @@ function renderMessages() {
   $('#chat').hidden=channel?.type!=='text';
   dom.msgInput.disabled=channel?.type!=='text';
   chatView.render({channel:channel?.type==='text' ? channel : null,messages:channel?.type==='text' ? state.messages.get(channel.id) || [] : [],authors:chatAuthors(channel?.id),...mentionSnapshot()});
+  markVisibleChannelRead();
 }
 
 function chatAuthors(channelId) {
@@ -1642,7 +1773,20 @@ function openVoiceHistory(channelId){
   const modal=openModal({title:channel.name+' · 旧文字记录（只读）',body,width:720,footer:[close]});close.addEventListener('click',()=>modal.close());
 }
 
-function ensureChatView(){if(!chatView)chatView=createChatView(dom.messages,{escape:esc,body:renderText,time:fmtTime,day:fmtDay,color:colorFor,avatar:avatarHtml,icon});return chatView;}
+function ensureChatView(){
+  if(!chatView){
+    chatView=createChatView(dom.messages,{escape:esc,body:renderText,time:fmtTime,day:fmtDay,color:colorFor,avatar:avatarHtml,icon});
+    chatView.setActions({onReply:selectMessageReply,onUnavailable:()=>toast('原消息已移除或不在当前加载的记录中','info'),reportError:reportNetworkError});
+  }
+  return chatView;
+}
+
+/** @param {import('./chat-protocol.js').ChatMessage} message @returns {void} */
+function selectMessageReply(message){
+  const channel=activeChannel();if(channel?.type!=='text')return;
+  const author=chatAuthors(channel.id).get(message.authorId??message.userId);
+  replyComposer?.select(channel.id,message,author?.name??message.name);
+}
 
 function renderMembers() {
   publishInterfaceState({serverName:serverGovernance?.server.name??activeServer()?.name??'',channelName:activeChannel()?.name??'',connected:state.connStatus==='open',memberCount:state.users.size});
@@ -1729,7 +1873,7 @@ function updateSelfPanel() {
       <button class="icon-btn ${deafened ? 'on-danger' : ''}" data-self-action="deafen" aria-pressed="${deafened}" title="${esc(deafenTitle)}">
         ${icon(deafened ? 'headphonesOff' : 'headphones', 18)}
       </button>
-      <button class="icon-btn" data-self-action="settings" title="设置">${icon('settings', 18)}</button>
+      <button class="icon-btn" id="voiceSettingsBtn" data-self-action="settings" title="语音与共享设置" aria-label="语音与共享设置">${icon('sliders', 18)}</button>
     </div>
   `;
   for (const [action, key, maximum, label] of [['mute', 'micVolume', 200, '麦克风输入音量'], ['deafen', 'outVolume', 100, '扬声器输出音量']]) {
@@ -1767,6 +1911,9 @@ function updateConnPill() {
 /* -------------------------------------------------------------------- */
 
 function wireStaticUI() {
+  dom.messages.addEventListener('scroll',markVisibleChannelRead,{passive:true});
+  window.addEventListener('focus',markVisibleChannelRead);
+  document.addEventListener('visibilitychange',markVisibleChannelRead);
   // 服务器切换
   dom.serverList.addEventListener('click', (ev) => {
     const btn = ev.target.closest('[data-server-id]');
@@ -1776,6 +1923,7 @@ function wireStaticUI() {
     state.activeServerId = srv.id;
     const first = srv.channels.find((c) => c.type === 'text') || srv.channels[0];
     state.activeChannelId = first ? first.id : null;
+    replyComposer?.clear();
     rememberChannel();
     renderAll();
   });
@@ -1850,6 +1998,7 @@ function wireStaticUI() {
     const channel=activeChannel();
     if(!row || !channel)return;
     const message=(state.messages.get(channel.id)||[]).find(item=>item.id===row.dataset.msgId),items=[];
+    if(message&&!message.system&&channel.type==='text')items.push({id:'replyMessageMenuBtn',label:'回复',icon:'send',onClick:()=>selectMessageReply(message)});
     if(message?.attachment && chatMedia)items.push({id:'favoriteMessageMenuBtn',label:'加入个人收藏',icon:'plus',onClick:()=>chatMedia.favoriteMessage(message,new AbortController().signal).catch(reportNetworkError)});
     if(canPerform(serverGovernance,state.activeServerId,'manageMessages'))items.push({id:'deleteMessageMenuBtn',label:'删除消息',icon:'trash',danger:true,onClick:()=>socket.send({t:'deleteMessage',channelId:channel.id,messageId:row.dataset.msgId})});
     if(!items.length)return;ev.preventDefault();openContextMenu(ev,items);
@@ -1869,7 +2018,7 @@ function wireStaticUI() {
     if (!btn) return;
     if (btn.dataset.selfAction === 'mute') toggleMute();
     else if (btn.dataset.selfAction === 'deafen') toggleDeafen();
-    else if (btn.dataset.selfAction === 'settings') openSettings();
+    else if (btn.dataset.selfAction === 'settings') openVoiceSettings();
   });
 
   // 语音舞台按钮
@@ -1889,7 +2038,7 @@ function wireStaticUI() {
     sendCurrentMessage();
   });
   dom.msgInput.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Enter' && !ev.shiftKey) {
+    if (ev.key === 'Enter' && !ev.shiftKey && !ev.isComposing && ev.keyCode !== 229) {
       ev.preventDefault();
       sendCurrentMessage();
     }
@@ -1920,6 +2069,7 @@ function rememberChannel() {
 function selectChannel(channelId, opts = {}) {
   const hit = findChannel(channelId);
   if (!hit) return;
+  if(channelId!==state.activeChannelId)replyComposer?.clear();
   state.activeServerId = hit.server.id;
   state.activeChannelId = channelId;
   rememberChannel();
@@ -1972,6 +2122,8 @@ async function onVoicePeers(message) {
     mediaUI.destroy();
   }
   engine.join(message.channelId);
+  syncGlobalPTT();
+  updatePresentationConsumers();
   const self=me();if(self){self.serverMuted=message.serverMuted===true;syncMemberModeration(self);}
   for(const peer of message.peers){const user=state.users.get(peer.id);if(user){user.serverMuted=peer.serverMuted===true;syncMemberModeration(user);}}
   state.voiceChannelId = message.channelId;
@@ -2028,33 +2180,40 @@ async function sendCurrentMessage() {
   if(textSendPending)return;
   const original=dom.msgInput.value;
   const text = dom.msgInput.value.trim();
-  if (!text) return;
+  if (!text && (!chatMedia || chatMedia.getComposerPhase()==='idle')) return;
   const channel = activeChannel();
   if (!channel || channel.type!=='text') return;
   if (state.connStatus !== 'open') {
     toast('还没连上服务器，消息没有发出去', 'warn');
     return;
   }
+  const reply=replyComposer?.get()??null;
+  const replyToId=reply?.channelId===channel.id?reply.messageId:null;
   textSendPending=true;const send=$('#sendBtn');send.disabled=true;
   try{
-    if(serverGovernance?.selfKey && chatMedia)await chatMedia.sendText(channel.id,text.slice(0,2000),new AbortController().signal);
-    else if(!socket.send({t:'chat',channelId:channel.id,text:text.slice(0,2000)}))throw new Error('房间连接中断，消息没有发出去');
+    if(!state.roomReady || !serverGovernance?.selfKey || !chatMedia)throw new Error('请等待成员身份验证完成后发送消息');
+    await chatMedia.submitMessage(channel.id,text.slice(0,2000),replyToId,new AbortController().signal);
+    replyComposer?.clearSent(reply);
     if(dom.msgInput.value===original && state.activeChannelId===channel.id){dom.msgInput.value='';dom.msgInput.style.height='auto';dom.msgInput.focus();}
   }catch(error){if(!(error instanceof Error && error.name==='AbortError'))reportNetworkError(error);}
   finally{textSendPending=false;send.disabled=false;}
 }
 
 async function openSettings() {
-  if (!engine) return;
   try {
     if (window.deepscord?.getDesktopSettings) state.desktopSettings = await window.deepscord.getDesktopSettings();
-    openSettingsPanel({
+    openSoftwareSettingsPanel({
       settings: state.settings,
-      engine,
       desktopSettings: state.desktopSettings,
+      onCustomizeInterface: state.roomReady && serverGovernance?.selfKey ? () => openServerCustomization('theme') : null,
+      onChooseNotificationSound: chooseNotificationSound,
+      async onResetNotificationSounds() {
+        await notificationSounds.reset('join');
+        await notificationSounds.reset('leave');
+        toast('已恢复默认进出提示音', 'success');
+      },
       async onDesktopSettingsChange(value) {
-        state.desktopSettings = await window.deepscord.setDesktopSettings(value);
-        syncVoiceOverlay();
+        receiveDesktopSettings(await window.deepscord.setDesktopSettings(value));
       },
       onIdentityChange: () => {
         persistIdentity().then(() => {
@@ -2069,6 +2228,11 @@ async function openSettings() {
   } catch (error) { reportNetworkError(error); }
 }
 
+function openVoiceSettings() {
+  if (!engine) return;
+  openVoiceSettingsPanel({ settings: state.settings, engine });
+}
+
 /* -------------------------------------------------------------------- */
 /* 菜单 / 创建频道 / 服务器                                              */
 /* -------------------------------------------------------------------- */
@@ -2080,6 +2244,12 @@ function openChannelMenu(ev,channelId) {
     if (!hit) return;
     const generation=governanceGeneration;
     const items = [{id:'channelShareMenuBtn',label:'复制频道邀请',icon:'link',onClick:()=>copyChannelInvite(channelId).catch(reportNetworkError)}];
+    if(hit.channel.type==='text'&&roomDescriptor?.roomId){
+      const roomId=roomDescriptor.roomId;
+      const muted=channelUnread(channelId).muted;
+      items.push({id:'channelMarkReadMenuBtn',label:'标为已读',onClick:()=>{unreadStore.markRead(roomId,channelId);renderRail();renderSidebar();}});
+      items.push({id:'channelMuteMenuBtn',label:muted?'取消频道静音':'静音此频道',onClick:()=>{unreadStore.setMuted(roomId,channelId,!muted);renderRail();renderSidebar();}});
+    }
     if (hit.channel.type !== 'text') {
       items.push({ label: '加入语音频道', icon: 'phone', onClick: () => enterChannel(channelId) });
     }
@@ -2181,7 +2351,6 @@ function openServerMenu(ev) {
   ev.stopPropagation();
   const srv=activeServer(),rect=(ev.currentTarget || ev.target).getBoundingClientRect();
   const items=[{id:'serverGovernanceMenuBtn',label:'服务器与域管理',icon:'settings',onClick:openServerGovernance}];
-  if(serverGovernance?.selfKey)items.push({id:'themeCustomizationMenuBtn',label:'本机界面自定义',icon:'edit',onClick:()=>openServerCustomization('theme')});
   if(serverGovernance?.selfKey && canManageServerCatalog(serverGovernance.policy,serverGovernance.selfKey))items.push(
     {id:'interactionCustomizationMenuBtn',label:'互动表情管理',icon:'settings',onClick:()=>prepareInteractionCustomization().catch(reportNetworkError)}
   );
@@ -2337,6 +2506,11 @@ function modalOpen() {
 
 function setupShortcuts() {
   if (window.deepscord?.onMuteShortcut) window.deepscord.onMuteShortcut(() => toggleMute());
+  if (window.deepscord?.onDeafenShortcut) window.deepscord.onDeafenShortcut(() => toggleDeafen());
+  if (window.deepscord?.onGlobalPTT) window.deepscord.onGlobalPTT(event => {
+    engine?.setPTTDown(event.down && engine.inVoice && state.settings.mode === 'ptt' && event.error === null);
+    if (event.error !== null) reportNetworkError(new Error(event.error));
+  });
   window.addEventListener('keydown', (ev) => {
     const typing = isTypingTarget(ev.target);
     if (!window.deepscord?.onMuteShortcut && ev.ctrlKey && ev.shiftKey && !ev.repeat && (ev.key === 'M' || ev.key === 'm')) {
@@ -2344,12 +2518,12 @@ function setupShortcuts() {
       toggleMute();
       return;
     }
-    if (ev.ctrlKey && ev.shiftKey && (ev.key === 'D' || ev.key === 'd')) {
+    if (!window.deepscord?.onDeafenShortcut && ev.ctrlKey && ev.shiftKey && !ev.repeat && (ev.key === 'D' || ev.key === 'd')) {
       ev.preventDefault();
       toggleDeafen();
       return;
     }
-    if (typing || modalOpen() || !engine) return;
+    if (typing || modalOpen() || !engine || window.deepscord?.updateGlobalPTT) return;
     if (state.settings.mode === 'ptt' && ev.code === state.settings.pttKey && !ev.repeat) {
       ev.preventDefault();
       engine.setPTTDown(true);
@@ -2357,27 +2531,27 @@ function setupShortcuts() {
   });
 
   window.addEventListener('keyup', (ev) => {
-    if (!engine) return;
+    if (!engine || window.deepscord?.updateGlobalPTT) return;
     if (state.settings.mode === 'ptt' && ev.code === state.settings.pttKey) {
       engine.setPTTDown(false);
     }
   });
 
   window.addEventListener('blur', () => {
-    if (engine) engine.setPTTDown(false);
+    if (engine && !window.deepscord?.updateGlobalPTT) engine.setPTTDown(false);
   });
 }
 
 function setupPttMouse() {
   const handleDown = (ev) => {
-    if (state.settings.mode !== 'ptt') return;
+    if (state.settings.mode !== 'ptt' || window.deepscord?.updateGlobalPTT) return;
     const key = ev.button === 3 ? 'Mouse4' : ev.button === 4 ? 'Mouse5' : null;
     if (!key || key !== state.settings.pttKey) return;
     ev.preventDefault();
     engine?.setPTTDown(true);
   };
   const handleUp = (ev) => {
-    if (state.settings.mode !== 'ptt') return;
+    if (state.settings.mode !== 'ptt' || window.deepscord?.updateGlobalPTT) return;
     const key = ev.button === 3 ? 'Mouse4' : ev.button === 4 ? 'Mouse5' : null;
     if (!key || key !== state.settings.pttKey) return;
     ev.preventDefault();
@@ -2442,6 +2616,7 @@ window.echo = {
     toggleMute,
     toggleDeafen,
     openSettings,
+    openVoiceSettings,
     openEditChannel,
     sendMessage(text) {
       dom.msgInput.value = text;

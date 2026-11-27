@@ -2,8 +2,8 @@
 
 /** @typedef {import('./poke-protocol.js').PokeMessage} PokeMessage */
 /** @typedef {import('./poke-protocol.js').PokeAdvertisement} PokeAdvertisement */
-/** @typedef {{sessionId:string|null,peers:{userId:string,supported:boolean,sessionId:string|null,status:'idle'|'pending'|'approved',requestId:string|null}[],requests:{userId:string,requestId:string}[],authorized:{userId:string}[]}} PokeState */
-/** @typedef {{sessionId:string,targetUserId:string,fromUserId:string,eventId:string,nx:number,ny:number,combo:number,boom:boolean}} PokeHit */
+/** @typedef {{sessionId:string|null,allowFunnyGestures:boolean,peers:{userId:string,supported:boolean,sessionId:string|null,status:'idle'|'pending'|'approved',requestId:string|null}[],requests:{userId:string,requestId:string}[],authorized:{userId:string}[]}} PokeState */
+/** @typedef {{sessionId:string,targetUserId:string,fromUserId:string,eventId:string,nx:number,ny:number,combo:number,boom:boolean,gesture:'point'|'middle'}} PokeHit */
 /** @typedef {{sessionId:string|null,supported:boolean,watching:boolean,status:'idle'|'pending'|'approved',requestId:string|null,grantId:string|null,seq:number,timer:ReturnType<typeof setTimeout>|null,lastRequest:number}} Remote */
 /** @typedef {{requestId:string,timer:ReturnType<typeof setTimeout>}} Request */
 /** @typedef {{requestId:string,grantId:string,seq:number,lastHit:number,nx:number,ny:number,combo:number}} Grant */
@@ -21,6 +21,12 @@ export function createScreenPoke(options) {
   /** @type {Map<string,number>} */ const received = new Map();
   /** @type {Map<string,number[]>} */ const hitTimes = new Map();
   /** @type {number[]} */ let totalHits = [];
+  let allowFunnyGestures = true;
+  /** @param {boolean} allowed @returns {void} */
+  function setFunnyGestures(allowed) {
+    if (typeof allowed !== 'boolean') throw new TypeError('Screen poke gesture permission must be a boolean');
+    allowFunnyGestures = allowed; options.onState();
+  }
   const stats = { rejected: 0, rateLimited: 0 };
 
   /** @param {string} userId @param {PokeMessage} message @returns {void} */
@@ -135,7 +141,7 @@ export function createScreenPoke(options) {
     if (message.seq <= (received.get(key) ?? 0)) { stats.rejected += 1; return; }
     if (received.size >= 128 && !received.has(key)) received.delete(received.keys().next().value ?? '');
     received.set(key, message.seq);
-    options.onHit({ sessionId: message.sessionId, targetUserId: from, fromUserId: message.fromUserId, eventId: `${message.grantId}:${message.seq}`, nx: message.nx, ny: message.ny, combo: message.combo, boom: message.boom });
+    options.onHit({ sessionId: message.sessionId, targetUserId: from, fromUserId: message.fromUserId, eventId: `${message.grantId}:${message.seq}`, nx: message.nx, ny: message.ny, combo: message.combo, boom: message.boom, gesture: message.gesture });
   }
   /** @param {string} from @param {PokeMessage} message @returns {void} */
   function receive(from, message) {
@@ -195,7 +201,7 @@ export function createScreenPoke(options) {
     hitTimes.set(from, [...recent, now]); totalHits.push(now);
     const combo = now - grant.lastHit <= 1100 && Math.hypot(message.nx - grant.nx, message.ny - grant.ny) <= 0.08 ? Math.min(10, grant.combo + 1) : 1;
     grant.lastHit = now; grant.nx = message.nx; grant.ny = message.ny; grant.combo = combo;
-    const event = /** @type {Extract<PokeMessage,{action:'event'}>} */ ({ action: 'event', sessionId, fromUserId: from, grantId: grant.grantId, seq: message.seq, nx: message.nx, ny: message.ny, boom: message.boom, combo });
+    const event = /** @type {Extract<PokeMessage,{action:'event'}>} */ ({ action: 'event', sessionId, fromUserId: from, grantId: grant.grantId, seq: message.seq, nx: message.nx, ny: message.ny, boom: message.boom, combo, gesture: combo >= 5 && allowFunnyGestures && Math.random() < 0.12 ? 'middle' : 'point' });
     display(options.getSelfId(), event);
     for (const viewer of viewers) options.send(viewer, event);
   }
@@ -207,8 +213,8 @@ export function createScreenPoke(options) {
   }
   /** @returns {PokeState} */
   function state() {
-    return { sessionId, peers: [...peers].map(([userId, peer]) => ({ userId, supported: peer.supported, sessionId: peer.sessionId, status: peer.status, requestId: peer.requestId })), requests: [...requests].map(([userId, request]) => ({ userId, requestId: request.requestId })), authorized: [...grants.keys()].map(userId => ({ userId })) };
+    return { sessionId, allowFunnyGestures, peers: [...peers].map(([userId, peer]) => ({ userId, supported: peer.supported, sessionId: peer.sessionId, status: peer.status, requestId: peer.requestId })), requests: [...requests].map(([userId, request]) => ({ userId, requestId: request.requestId })), authorized: [...grants.keys()].map(userId => ({ userId })) };
   }
   function reset() { end(); for (const peer of peers.values()) resetRemote(peer); peers.clear(); received.clear(); options.onState(); }
-  return { start, end, advertise, watch, unwatch, request, approve, reject, revoke, revokeAll, hit, receive, remove, state, reset, stats: () => ({ ...stats }), advertisement: () => /** @type {PokeAdvertisement} */ ({ version: 1, sessionId }) };
+  return { start, end, setFunnyGestures, advertise, watch, unwatch, request, approve, reject, revoke, revokeAll, hit, receive, remove, state, reset, stats: () => ({ ...stats }), advertisement: () => /** @type {PokeAdvertisement} */ ({ version: 1, sessionId }) };
 }

@@ -1,4 +1,5 @@
 // @ts-check
+import {loadLocalInterface} from './local-interface.js';
 
 /** @typedef {import('../public/js/network-protocol.js').JsonValue} JsonValue */
 /** @typedef {{[key:string]:JsonValue}} JsonObject */
@@ -66,6 +67,7 @@ function parseCreatedRoom(value, kind) {
 
 /** @param {ConnectionApi} api @returns {Promise<void>} */
 async function startPanel(api) {
+  await loadLocalInterface(/** @type {ConnectionApi & import('./local-interface.js').LocalInterfaceApi} */ (api));
   const context = parseContext(await api.getConnectionContext());
   /** @type {ConnectionIntent} */ let intent = context.intent;
   /** @type {ConnectionMethod|null} */ let method = null;
@@ -224,6 +226,7 @@ async function startPanel(api) {
 
 const desktopApi = /** @type {Window & {deepscord?:ConnectionApi}} */ (window).deepscord;
 if (!desktopApi) {
+  document.documentElement.dataset.localInterface='ready';
   element('connectionError').hidden = false;
   element('connectionError').textContent = '桌面连接接口未加载，请从 Deepscord 客户端打开连接面板。';
   element('connectionStatus').textContent = '连接面板无法初始化。';

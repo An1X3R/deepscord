@@ -13,6 +13,7 @@ const {createWorkspaceStore}=require('../desktop/workspace-store.cjs');
 const {createGovernance}=require('../lib/server-governance.cjs');
 const {createMediaValidator}=require('../lib/media-validator.cjs');
 const {contentDigest,verifySealedMessage}=require('../lib/content-crypto.cjs');
+const {createContentClient}=require('../public/js/content-client.js');
 const {parseChatMessage,parseMediaMetadata,UNICODE_EMOJIS}=require('../public/js/chat-protocol.js');
 const {reactionActor}=require('../lib/message-reactions.cjs');
 /** @typedef {import('../public/js/chat-protocol.js').ChatMessage} ChatMessage */
@@ -64,12 +65,20 @@ async function main(){
     await bVault.importSecret(invitation);
     const imported=await b.activate(bEntry,{descriptor,journal,policy});assert(imported);assert.deepEqual(imported.key,activated.key);
     const requestId=migrationRequest('original-history');
-    const body={text:'Original history readable by new authorized members',attachment:{...cipher.asset,kind:/** @type {const} */('sticker'),name:'Original sticker'},reactions:[{kind:/** @type {const} */('unicode'),key:'u:👍',emoji:'👍',userIds:[reactionActor(descriptor.creatorKey)]}],reactionRevision:1};
+    const body={text:'Original history readable by new authorized members',replyToId:'historical-parent',attachment:{...cipher.asset,kind:/** @type {const} */('sticker'),name:'Original sticker'},reactions:[{kind:/** @type {const} */('unicode'),key:'u:👍',emoji:'👍',userIds:[reactionActor(descriptor.creatorKey)]}],reactionRevision:1};
     const sealed=await a.sealChat(aEntry,{channelId:'ch-text',requestId,body});
     verifySealedMessage({roomId:descriptor.roomId,channelId:'ch-text',requestId},sealed);
     const originalMessage=parseChatMessage({...envelope('original-history',requestId,sealed),attachment:{...cipher.asset,kind:'sticker',name:'encrypted.avif'}});
     const openedA=await a.openChat(aEntry,{channelId:'ch-text',message:originalMessage}),openedB=await b.openChat(bEntry,{channelId:'ch-text',message:originalMessage});
-    assert.deepEqual(openedA,openedB);assert.equal(openedB.text,body.text);assert.equal(openedB.attachment?.name,'Original sticker');assert.deepEqual(openedB.reactions,body.reactions);
+    assert.deepEqual(openedA,openedB);assert.equal(openedB.text,body.text);assert.equal(openedB.replyToId,body.replyToId);assert.equal(originalMessage.replyToId,undefined);
+    assert.throws(()=>parseChatMessage({...originalMessage,replyToId:body.replyToId}),/no plaintext/);
+    await assert.rejects(a.sealChat(aEntry,{channelId:'ch-text',requestId:'invalid-reference',body:{text:'Invalid reference',replyToId:'../bad'}}),/Reply message ID/);
+    const client=createContentClient({activateContentRoom:input=>a.activate(aEntry,input),prepareContentRoom:()=>a.prepare(aEntry),signContentPolicy:input=>a.signPolicy(aEntry,input),sealContentReaction:input=>a.sealReaction(aEntry,input),sealContentMessage:input=>a.sealChat(aEntry,input),openContentMessage:input=>a.openChat(aEntry,input),sealContentMedia:input=>a.sealMedia(aEntry,input),openContentMedia:input=>a.openMedia(aEntry,input)});
+    const clientKey=await client.initialize({descriptor,journal,policy});assert(clientKey);clientKey.key.fill(0);
+    const clientWire=await client.sealMessage('ch-text','client-reply-request',{text:'Renderer reply',replyToId:originalMessage.id});
+    assert.equal(clientWire.replyToId,undefined);assert.equal(clientWire.text,'');assert(clientWire.sealed);
+    const clientOpened=await client.openMessage('ch-text',envelope('client-reply','client-reply-request',clientWire.sealed));
+    assert.equal(clientOpened.replyToId,originalMessage.id);assert.equal(clientOpened.text,'Renderer reply');assert.equal(openedB.attachment?.name,'Original sticker');assert.deepEqual(openedB.reactions,body.reactions);
     const reactionRequest='second-member-reaction',reactionSealed=await b.sealReaction(bEntry,{channelId:'ch-text',requestId:reactionRequest,messageId:originalMessage.id,body:{selection:{kind:'unicode',emoji:'👍'},active:true}});
     const reacted=parseChatMessage({...originalMessage,sealedReactions:[{requestId:reactionRequest,sealed:reactionSealed}]});
     const reactedA=await a.openChat(aEntry,{channelId:'ch-text',message:reacted}),reactedB=await b.openChat(bEntry,{channelId:'ch-text',message:reacted});
@@ -85,11 +94,11 @@ async function main(){
     const crowdRequest='concurrent-reactions-base',crowdSealed=await a.sealChat(aEntry,{channelId:'ch-text',requestId:crowdRequest,body:{text:'Concurrent reaction history'}}),crowdMessage=envelope('concurrent-history',crowdRequest,crowdSealed);
     /** @type {NonNullable<ChatMessage['sealedReactions']>} */const crowdEvents=[];
     for(const [index,emoji] of UNICODE_EMOJIS.slice(0,17).entries()){const requestId='concurrent-reaction-'+index,sealed=await b.sealReaction(bEntry,{channelId:'ch-text',requestId,messageId:crowdMessage.id,body:{selection:{kind:'unicode',emoji},active:true}});crowdEvents.push({requestId,sealed});}
-    const crowdOpened=await a.openChat(aEntry,{channelId:'ch-text',message:{...crowdMessage,sealedReactions:crowdEvents}});assert.equal(crowdOpened.reactions?.length,17);assert.equal(crowdOpened.reactionRevision,17);assert.equal(crowdOpened.text,'Concurrent reaction history');
+    const crowdOpened=await a.openChat(aEntry,{channelId:'ch-text',message:{...crowdMessage,sealedReactions:crowdEvents}});assert.equal(crowdOpened.reactions?.length,17);assert.equal(crowdOpened.reactionRevision,17);assert.equal(crowdOpened.text,'Concurrent reaction history');assert.equal(crowdOpened.replyToId,undefined);
     const mediaB=await b.openMedia(bEntry,{asset:cipher.asset,data:cipher.data});assert.deepEqual(Buffer.from(mediaB.data,'base64'),original);assert.deepEqual(mediaB.asset,asset);
-    const memberRequest='second-member-message',memberSealed=await b.sealChat(bEntry,{channelId:'ch-text',requestId:memberRequest,body:{text:'Second member signed reply'}});
+    const memberRequest='second-member-message',memberSealed=await b.sealChat(bEntry,{channelId:'ch-text',requestId:memberRequest,body:{text:'Second member signed reply',replyToId:originalMessage.id}});
     assert.equal(memberSealed.memberKey,secondIdentity);assert.notEqual(memberSealed.memberKey,sealed.memberKey);
-    const memberMessage=envelope('reply',memberRequest,memberSealed),reply=await a.openChat(aEntry,{channelId:'ch-text',message:memberMessage});assert.equal(reply.text,'Second member signed reply');
+    const memberMessage=envelope('reply',memberRequest,memberSealed),reply=await a.openChat(aEntry,{channelId:'ch-text',message:memberMessage});assert.equal(reply.text,'Second member signed reply');assert.equal(reply.replyToId,originalMessage.id);assert.equal(memberMessage.replyToId,undefined);
     const returnMedia=await b.sealMedia(bEntry,{kind:'personal',asset,data:original.toString('base64')});
     const mediaA=await a.openMedia(aEntry,{asset:returnMedia.asset,data:returnMedia.data});assert.deepEqual(Buffer.from(mediaA.data,'base64'),original);assert.notEqual(returnMedia.asset.sha256,cipher.asset.sha256);
     ipcMain.handle('content-native:activate',async(_event,actor,/** @type {JsonValue} */input)=>{

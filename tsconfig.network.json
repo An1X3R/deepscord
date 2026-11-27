@@ -17,6 +17,9 @@
     ]
   },
   "files": [
+    "desktop/static-assets.cjs",
+    "test/static-assets.mjs",
+    "test/windows-protection-compat.mjs",
     "lib/atomic-file.cjs",
     "lib/connection-policy.cjs",
     "public/js/governance-checkpoint.js",
@@ -131,6 +134,16 @@
     "desktop/profile-store.cjs",
     "desktop/desktop-schema.cjs",
     "desktop/desktop-features.cjs",
+    "desktop/global-ptt.cjs",
+    "test/global-ptt.cjs",
+    "public/js/chat-unread.js",
+    "test/chat-unread.mjs",
+    "desktop/chat-unread-store.cjs",
+    "test/chat-unread-store.mjs",
+    "test/chat-unread-native.mjs",
+    "test/chat-reply.mjs",
+    "public/js/reply-composer.js",
+    "public/js/chat-extras.js",
     "desktop/capture-ipc.cjs",
     "desktop/voice-overlay.js",
     "desktop/overlay-preload.js",
@@ -152,6 +165,7 @@
     "desktop/test-global-shortcut.cjs",
     "desktop/workspace-store.cjs",
     "desktop/workspace.js",
+    "test/local-interface-native.mjs",
     "desktop/connections.js",
     "public/js/room-workspace-ui.js",
     "public/js/server-governance-ui.js",
@@ -258,6 +272,11 @@
     "desktop/radio-access.cjs",
     "public/js/dom-reconcile.js",
     "public/js/governance-consent.js",
-    "test/ci-suite.mjs"
+    "test/ci-suite.mjs",
+    "test/voice-cadence.cjs",
+    "public/js/avatar-crop.js",
+    "public/js/notification-sounds.js",
+    "desktop/notification-sounds.cjs",
+    "test/notification-sounds.cjs"
   ]
 }

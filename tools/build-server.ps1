@@ -31,7 +31,7 @@ foreach ($name in @('server.js', 'lib', 'public', 'Dockerfile', 'docker-compose.
 foreach ($name in @('Caddyfile', 'coturn.conf', 'livekit-pin.json', 'livekit-download.ps1', 'livekit-config.cjs', 'livekit-compose.yml')) {
     Copy-Item -LiteralPath (Join-Path $sourceRoot ('deploy\' + $name)) -Destination $deployDirectory -ErrorAction Stop
 }
-foreach ($name in @('package.json', 'package-lock.json', 'start-server.cmd', 'start-server.ps1', 'start-screen-sfu.cmd', 'start-screen-sfu.ps1', 'server.env.example')) {
+foreach ($name in @('package.json', 'package-lock.json', 'README.md', 'start-server.cmd', 'start-server.ps1', 'start-screen-sfu.cmd', 'start-screen-sfu.ps1', 'server.env.example')) {
     Copy-Item -LiteralPath (Join-Path $sourceRoot ('standalone\' + $name)) -Destination $outputPath -ErrorAction Stop
 }
 [string]$runtimeDirectory = Join-Path $outputPath 'runtime'
